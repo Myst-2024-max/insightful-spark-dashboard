@@ -7,6 +7,8 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   checkUserPermission: (requiredRole: UserRole | UserRole[]) => boolean;
+  canViewAllDepartments: () => boolean;
+  getCurrentUserDepartment: () => SchoolDepartment | undefined;
 }
 
 // Default auth state
@@ -21,6 +23,8 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: () => {},
   checkUserPermission: () => false,
+  canViewAllDepartments: () => false,
+  getCurrentUserDepartment: () => undefined,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -110,6 +114,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return authState.user.role === requiredRole;
   };
 
+  // New helper method to check if user can view all departments
+  const canViewAllDepartments = () => {
+    if (!authState.user) return false;
+    return (
+      authState.user.role === UserRole.MASTER_ADMIN || 
+      authState.user.role === UserRole.ACCOUNTS_TEAM
+    );
+  };
+
+  // New helper method to get current user's department
+  const getCurrentUserDepartment = () => {
+    return authState.user?.department;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -117,6 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         checkUserPermission,
+        canViewAllDepartments,
+        getCurrentUserDepartment,
       }}
     >
       {children}

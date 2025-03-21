@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import UserForm from '@/components/users/UserForm';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Filter } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 
 interface HacaUser {
@@ -25,23 +25,41 @@ interface HacaUser {
 }
 
 const UserManagement = () => {
-  const { user, checkUserPermission } = useAuth();
+  const { user, checkUserPermission, canViewAllDepartments, getCurrentUserDepartment } = useAuth();
   const [users, setUsers] = useState<HacaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<HacaUser | null>(null);
+  const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
+
+  // If user can't view all departments, force their department as the filter
+  useEffect(() => {
+    if (!canViewAllDepartments()) {
+      const userDept = getCurrentUserDepartment();
+      if (userDept) {
+        setDepartmentFilter(userDept);
+      }
+    }
+  }, [canViewAllDepartments, getCurrentUserDepartment]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [departmentFilter]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('haca_users')
         .select('*')
         .order('name');
+      
+      // Apply department filter if set (note: RLS policies will also restrict data)
+      if (departmentFilter) {
+        query = query.eq('department', departmentFilter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setUsers(data || []);
@@ -122,10 +140,24 @@ const UserManagement = () => {
             Create and manage user accounts for HACA Academy
           </p>
         </div>
-        <Button onClick={handleAddUser} className="flex items-center gap-2">
-          <PlusCircle className="h-4 w-4" />
-          Add New User
-        </Button>
+        <div className="flex gap-2">
+          {canViewAllDepartments() && (
+            <select 
+              className="border border-gray-300 rounded px-3 py-2 bg-white"
+              value={departmentFilter || ''}
+              onChange={(e) => setDepartmentFilter(e.target.value || null)}
+            >
+              <option value="">All Departments</option>
+              {Object.values(SchoolDepartment).map((dept) => (
+                <option key={dept} value={dept}>{dept} School</option>
+              ))}
+            </select>
+          )}
+          <Button onClick={handleAddUser} className="flex items-center gap-2">
+            <PlusCircle className="h-4 w-4" />
+            Add New User
+          </Button>
+        </div>
       </header>
 
       {showForm && (
@@ -161,7 +193,7 @@ const UserManagement = () => {
               ) : users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-10">
-                    No users found. Add your first user to get started.
+                    No users found. {users.length === 0 && !departmentFilter ? 'Add your first user to get started.' : ''}
                   </TableCell>
                 </TableRow>
               ) : (
