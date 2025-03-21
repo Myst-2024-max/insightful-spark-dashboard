@@ -31,6 +31,7 @@ const UserManagement = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<HacaUser | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // If user can't view all departments, force their department as the filter
   useEffect(() => {
@@ -49,6 +50,8 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       let query = supabase
         .from('haca_users')
         .select('*')
@@ -61,10 +64,16 @@ const UserManagement = () => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
+      if (error) {
+        console.error('Error fetching users:', error);
+        setError('Failed to fetch users. Please try again.');
+        toast.error('Failed to load users');
+      } else {
+        setUsers(data || []);
+      }
+    } catch (err) {
+      console.error('Error in fetchUsers:', err);
+      setError('An unexpected error occurred. Please try again.');
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
@@ -90,7 +99,12 @@ const UserManagement = () => {
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting user:', error);
+        toast.error('Failed to delete user: ' + error.message);
+        return;
+      }
+      
       toast.success('User deleted successfully');
       fetchUsers();
     } catch (error) {
@@ -111,7 +125,12 @@ const UserManagement = () => {
         .update({ active: !user.active })
         .eq('id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating user status:', error);
+        toast.error('Failed to update user status: ' + error.message);
+        return;
+      }
+      
       toast.success(`User ${user.active ? 'deactivated' : 'activated'} successfully`);
       fetchUsers();
     } catch (error) {
@@ -120,6 +139,7 @@ const UserManagement = () => {
     }
   };
 
+  // Only MASTER_ADMIN can access this page
   if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -171,6 +191,12 @@ const UserManagement = () => {
       )}
 
       <CustomCard>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
         <div className="rounded-md border">
           <Table>
             <TableHeader>

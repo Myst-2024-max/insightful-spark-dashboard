@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 
 interface HacaUser {
   id: string;
@@ -63,6 +64,7 @@ const formSchema = z.object({
 
 const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) => {
   const isEditing = !!existingUser;
+  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -113,7 +115,11 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
           .update(userData)
           .eq('id', existingUser.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating user:', error);
+          toast.error('Failed to update user: ' + error.message);
+          return;
+        }
         toast.success('User updated successfully');
       } else {
         // Fix: When creating a new user, ensure all required fields are present
@@ -124,14 +130,20 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
           password: userData.password,
           department: userData.department,
           avatar: userData.avatar,
-          active: true
+          active: true,
+          // Add created_by field to track who created this user
+          created_by: user?.id
         };
         
         const { error } = await supabase
           .from('haca_users')
           .insert(newUser);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating user:', error);
+          toast.error('Failed to create user: ' + error.message);
+          return;
+        }
         toast.success('User created successfully');
       }
       
