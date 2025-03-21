@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 interface HacaUser {
   id: string;
@@ -74,6 +76,17 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
     },
   });
 
+  // Watch for role changes to handle department field
+  const selectedRole = form.watch('role');
+  const needsDepartment = selectedRole === UserRole.PROJECT_LEAD;
+  
+  // Effect to reset department if not a project lead
+  useEffect(() => {
+    if (!needsDepartment && form.getValues('department')) {
+      form.setValue('department', null);
+    }
+  }, [needsDepartment, form]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       const userData = { ...values };
@@ -86,6 +99,12 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       // Generate avatar if not provided
       if (!userData.avatar) {
         userData.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0159FF&color=fff`;
+      }
+
+      // Ensure PROJECT_LEAD has a department
+      if (userData.role === UserRole.PROJECT_LEAD && !userData.department) {
+        toast.error('Project Lead must have a department assigned');
+        return;
       }
 
       if (isEditing) {
@@ -123,13 +142,20 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
     }
   };
 
-  const needsDepartment = form.watch('role') === UserRole.PROJECT_LEAD;
-
   return (
     <div className="p-4">
       <h2 className="text-xl font-semibold mb-6">
         {isEditing ? 'Edit User' : 'Create New User'}
       </h2>
+      
+      {needsDepartment && (
+        <Alert className="mb-6 bg-blue-50">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Project Leads must be assigned to a specific school department
+          </AlertDescription>
+        </Alert>
+      )}
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
