@@ -9,7 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      haca_users: {
+        Row: {
+          active: boolean
+          avatar: string | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          email: string
+          id: string
+          name: string
+          password: string
+          role: string
+        }
+        Insert: {
+          active?: boolean
+          avatar?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email: string
+          id?: string
+          name: string
+          password: string
+          role: string
+        }
+        Update: {
+          active?: boolean
+          avatar?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string
+          id?: string
+          name?: string
+          password?: string
+          role?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

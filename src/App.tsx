@@ -12,6 +12,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 // Pages
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
+import UserManagement from "@/pages/UserManagement";
 import NotFound from "@/pages/NotFound";
 import NotAuthorized from "@/pages/NotAuthorized";
 
@@ -32,7 +33,7 @@ const App = () => (
             {/* Protected routes */}
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/users" element={<NotFound />} />
+              <Route path="/users" element={<UserManagement />} />
               <Route path="/sales" element={<NotFound />} />
               <Route path="/accounts" element={<NotFound />} />
               <Route path="/growth" element={<NotFound />} />

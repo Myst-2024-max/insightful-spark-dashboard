@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, UserRole, SchoolDepartment, AuthState } from '@/lib/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -8,53 +9,7 @@ interface AuthContextType extends AuthState {
   checkUserPermission: (requiredRole: UserRole | UserRole[]) => boolean;
 }
 
-// Mock users for demonstration
-const mockUsers = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@haca.academy',
-    role: UserRole.MASTER_ADMIN,
-    avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=0159FF&color=fff',
-  },
-  {
-    id: '2',
-    name: 'Sales User',
-    email: 'sales@haca.academy',
-    role: UserRole.SALES_EXECUTIVE,
-    avatar: 'https://ui-avatars.com/api/?name=Sales+User&background=0159FF&color=fff',
-  },
-  {
-    id: '3',
-    name: 'Accounts User',
-    email: 'accounts@haca.academy',
-    role: UserRole.ACCOUNTS_TEAM,
-    avatar: 'https://ui-avatars.com/api/?name=Accounts+User&background=0159FF&color=fff',
-  },
-  {
-    id: '4',
-    name: 'Growth User',
-    email: 'growth@haca.academy',
-    role: UserRole.GROWTH_TEAM,
-    avatar: 'https://ui-avatars.com/api/?name=Growth+User&background=0159FF&color=fff',
-  },
-  {
-    id: '5',
-    name: 'Team Lead',
-    email: 'team@haca.academy',
-    role: UserRole.TEAM_LEAD,
-    avatar: 'https://ui-avatars.com/api/?name=Team+Lead&background=0159FF&color=fff',
-  },
-  {
-    id: '6',
-    name: 'Project Lead',
-    email: 'project@haca.academy',
-    role: UserRole.PROJECT_LEAD,
-    department: SchoolDepartment.CODING,
-    avatar: 'https://ui-avatars.com/api/?name=Project+Lead&background=0159FF&color=fff',
-  },
-];
-
+// Default auth state
 const defaultAuthState: AuthState = {
   user: null,
   isAuthenticated: false,
@@ -94,25 +49,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    // In a real app, you would make an API call to verify credentials
-    // For this demo, we'll just check against our mock users
-    const user = mockUsers.find(u => u.email === email);
-    
-    if (!user) {
+    try {
+      // Query the haca_users table to find matching user
+      const { data, error } = await supabase
+        .from('haca_users')
+        .select('*')
+        .eq('email', email)
+        .eq('active', true)
+        .single();
+      
+      if (error) throw new Error('Invalid credentials');
+      if (!data) throw new Error('User not found');
+      
+      // Verify password (in a real app, you'd use bcrypt or similar)
+      if (data.password !== password) {
+        throw new Error('Invalid credentials');
+      }
+      
+      // Transform the data into our User type
+      const user: User = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role as UserRole,
+        department: data.department as SchoolDepartment | undefined,
+        avatar: data.avatar,
+      };
+      
+      localStorage.setItem('haca_user', JSON.stringify(user));
+      setAuthState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error('Login error:', error);
       throw new Error('Invalid credentials');
     }
-    
-    // In real app, verify password hash here
-    if (password !== 'password') {
-      throw new Error('Invalid credentials');
-    }
-    
-    localStorage.setItem('haca_user', JSON.stringify(user));
-    setAuthState({
-      user,
-      isAuthenticated: true,
-      isLoading: false,
-    });
   };
 
   const logout = () => {
