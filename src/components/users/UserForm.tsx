@@ -97,9 +97,20 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         if (error) throw error;
         toast.success('User updated successfully');
       } else {
+        // Fix: When creating a new user, ensure all required fields are present
+        const newUser = {
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          password: userData.password,
+          department: userData.department,
+          avatar: userData.avatar,
+          active: true
+        };
+        
         const { error } = await supabase
           .from('haca_users')
-          .insert([userData]);
+          .insert(newUser);
 
         if (error) throw error;
         toast.success('User created successfully');
