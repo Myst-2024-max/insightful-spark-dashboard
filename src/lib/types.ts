@@ -34,14 +34,17 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+// Import LucideIcon type
+import { LucideIcon } from 'lucide-react';
+
 // Dashboard analytics data
 export interface AnalyticsData {
   id: string;
   title: string;
-  value: number;
+  value: number | string;
   percentChange: number;
   trend: 'up' | 'down' | 'neutral';
-  icon?: React.ReactNode;
+  icon?: LucideIcon;
 }
 
 // Chart data interface

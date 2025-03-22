@@ -71,7 +71,10 @@ const GrowthTeamDashboard = () => {
 
         if (chartsData) {
           chartsData.forEach(chart => {
-            const chartData = JSON.parse(chart.chart_data);
+            const chartData = typeof chart.chart_data === 'string' 
+              ? JSON.parse(chart.chart_data) 
+              : chart.chart_data;
+              
             switch (chart.chart_name) {
               case 'Target Achievement':
                 setTargetAchievedData(chartData);

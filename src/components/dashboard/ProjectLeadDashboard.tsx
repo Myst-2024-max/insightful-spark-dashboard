@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getIconForMetric } from '@/utils/dashboardUtils';
 
 const ProjectLeadDashboard = () => {
   const { user } = useAuth();
@@ -85,7 +86,10 @@ const ProjectLeadDashboard = () => {
 
         if (chartsData) {
           chartsData.forEach(chart => {
-            const chartData = JSON.parse(chart.chart_data);
+            const chartData = typeof chart.chart_data === 'string'
+              ? JSON.parse(chart.chart_data)
+              : chart.chart_data;
+              
             switch (chart.chart_name) {
               case 'Target Achievement':
                 setTargetAchievedData(chartData);

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getIconForMetric } from '@/utils/dashboardUtils';
 
 const MasterAdminDashboard = () => {
   const { toast } = useToast();
@@ -67,7 +68,10 @@ const MasterAdminDashboard = () => {
 
         if (chartsData) {
           chartsData.forEach(chart => {
-            const chartData = JSON.parse(chart.chart_data);
+            const chartData = typeof chart.chart_data === 'string'
+              ? JSON.parse(chart.chart_data)
+              : chart.chart_data;
+              
             switch (chart.chart_name) {
               case 'Revenue by School':
                 setRevenueBySchoolData(chartData);
