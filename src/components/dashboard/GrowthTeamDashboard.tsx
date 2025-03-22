@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, DollarSign, Users, Target } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
@@ -9,9 +9,21 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/AuthContext';
+import { getIconForMetric, updateMetric } from '@/utils/dashboardUtils';
 
 const GrowthTeamDashboard = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState([]);
+  const [targetAchievedData, setTargetAchievedData] = useState([]);
+  const [spendByProgramData, setSpendByProgramData] = useState([]);
+  const [leadsBySourceData, setLeadsBySourceData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const form = useForm({
     defaultValues: {
       spend: '',
@@ -20,67 +32,162 @@ const GrowthTeamDashboard = () => {
     },
   });
 
-  const analyticsData = [
-    {
-      id: '1',
-      title: 'Ad Spend',
-      value: 85000,
-      percentChange: 5.2,
-      trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '2',
-      title: 'Lead Target',
-      value: 1200,
-      percentChange: 10.0,
-      trend: 'up' as const,
-      icon: <Target className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '3',
-      title: 'Leads Generated',
-      value: 945,
-      percentChange: 8.7,
-      trend: 'up' as const,
-      icon: <Users className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '4',
-      title: 'CPL',
-      value: 90,
-      percentChange: -3.2,
-      trend: 'down' as const,
-      icon: <TrendingUp className="h-5 w-5 text-primary" />,
-    },
-  ];
-  
-  const targetAchievedData = [
-    { name: 'Achieved', value: 79 },
-    { name: 'Remaining', value: 21 },
-  ];
-  
-  const spendByProgramData = [
-    { name: 'Web Development', value: 28000 },
-    { name: 'UI/UX Design', value: 22000 },
-    { name: 'Digital Marketing', value: 19000 },
-    { name: 'Financial Analysis', value: 16000 },
-  ];
-  
-  const leadsBySourceData = [
-    { name: 'Week 1', Facebook: 85, Instagram: 65, Google: 45 },
-    { name: 'Week 2', Facebook: 92, Instagram: 72, Google: 51 },
-    { name: 'Week 3', Facebook: 87, Instagram: 79, Google: 48 },
-    { name: 'Week 4', Facebook: 95, Instagram: 85, Google: 55 },
-    { name: 'Week 5', Facebook: 105, Instagram: 92, Google: 61 },
-    { name: 'Week 6', Facebook: 112, Instagram: 95, Google: 58 },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      if (!user?.department) return;
 
-  const onSubmit = (data: any) => {
-    console.log(data);
-    setIsFormOpen(false);
-    // Here you would normally update the data in your backend
+      try {
+        // Fetch metrics data
+        const { data: metricsData, error: metricsError } = await supabase
+          .from('dashboard_metrics')
+          .select('*')
+          .eq('department', user.department);
+
+        if (metricsError) throw metricsError;
+
+        if (metricsData) {
+          const analytics = metricsData.filter(metric => 
+            ['Ad Spend', 'Lead Target', 'Leads Generated', 'CPL'].includes(metric.metric_name)
+          ).map((metric, index) => ({
+            id: index.toString(),
+            title: metric.metric_name,
+            value: metric.metric_value,
+            percentChange: metric.percent_change,
+            trend: metric.trend,
+            icon: getIconForMetric(metric.metric_name)
+          }));
+          
+          setAnalyticsData(analytics);
+        }
+
+        // Fetch chart data
+        const { data: chartsData, error: chartsError } = await supabase
+          .from('dashboard_charts')
+          .select('*')
+          .eq('department', user.department);
+
+        if (chartsError) throw chartsError;
+
+        if (chartsData) {
+          chartsData.forEach(chart => {
+            const chartData = JSON.parse(chart.chart_data);
+            switch (chart.chart_name) {
+              case 'Target Achievement':
+                setTargetAchievedData(chartData);
+                break;
+              case 'Spend by Program':
+                setSpendByProgramData(chartData);
+                break;
+              case 'Leads by Source':
+                setLeadsBySourceData(chartData);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast({
+          title: "Error fetching data",
+          description: "Could not load dashboard data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+
+    // Set up real-time subscriptions
+    const channel = supabase
+      .channel('growth-dashboard-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_metrics',
+          filter: `department=eq.${user?.department}`
+        },
+        (payload) => {
+          console.log('Metrics changed:', payload);
+          fetchDashboardData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_charts',
+          filter: `department=eq.${user?.department}`
+        },
+        (payload) => {
+          console.log('Charts changed:', payload);
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.department, toast]);
+
+  const onSubmit = async (data) => {
+    if (!user?.department) {
+      toast({
+        title: "Error",
+        description: "User department information is missing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Update ad spend
+      if (data.spend) {
+        const result = await updateMetric(user.department, 'Ad Spend', parseFloat(data.spend));
+        if (!result.success) throw new Error("Failed to update Ad Spend");
+      }
+      
+      // Update lead target
+      if (data.leadTarget) {
+        const result = await updateMetric(user.department, 'Lead Target', parseInt(data.leadTarget));
+        if (!result.success) throw new Error("Failed to update Lead Target");
+      }
+      
+      // In a real app, programName would be used to update a programs table
+      if (data.programName) {
+        toast({
+          title: "Program Added",
+          description: `${data.programName} has been added to your programs.`,
+        });
+      }
+
+      form.reset();
+      setIsFormOpen(false);
+      
+      toast({
+        title: "Data Updated",
+        description: "Growth data has been successfully updated.",
+      });
+    } catch (error) {
+      console.error('Error updating growth data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update growth data. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading dashboard data...</div>;
+  }
 
   return (
     <div className="space-y-8">

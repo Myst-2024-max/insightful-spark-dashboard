@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Target, Users, DollarSign, TrendingUp, BarChart4, Zap } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
@@ -10,10 +10,20 @@ import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '@/components/auth/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const ProjectLeadDashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState([]);
+  const [secondMetrics, setSecondMetrics] = useState([]);
+  const [targetAchievedData, setTargetAchievedData] = useState([]);
+  const [monthlyPerformanceData, setMonthlyPerformanceData] = useState([]);
+  const [conversionByChannelData, setConversionByChannelData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const form = useForm({
     defaultValues: {
       monthlyTarget: '',
@@ -22,94 +32,181 @@ const ProjectLeadDashboard = () => {
     },
   });
 
-  const analyticsData = [
-    {
-      id: '1',
-      title: 'Total Leads Needed',
-      value: 350,
-      percentChange: 5.2,
-      trend: 'up' as const,
-      icon: <Users className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '2',
-      title: 'Conversion Ratio',
-      value: 32.5,
-      percentChange: 3.8,
-      trend: 'up' as const,
-      icon: <BarChart4 className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '3',
-      title: 'Spend-Revenue Ratio',
-      value: 18.4,
-      percentChange: -2.1,
-      trend: 'down' as const,
-      icon: <TrendingUp className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '4',
-      title: 'Fresh Admissions',
-      value: 85000,
-      percentChange: 7.5,
-      trend: 'up' as const,
-      icon: <Zap className="h-5 w-5 text-primary" />,
-    },
-  ];
-  
-  const secondMetrics = [
-    {
-      id: '5',
-      title: 'Second EMI',
-      value: 62000,
-      percentChange: 6.3,
-      trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '6',
-      title: 'ARPPU',
-      value: 38500,
-      percentChange: 4.2,
-      trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '7',
-      title: 'CPL',
-      value: 780,
-      percentChange: -3.5,
-      trend: 'down' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
-    },
-  ];
-  
-  const targetAchievedData = [
-    { name: 'Achieved', value: 72 },
-    { name: 'Remaining', value: 28 },
-  ];
-  
-  const monthlyPerformanceData = [
-    { name: 'Jan', target: 35, achieved: 32 },
-    { name: 'Feb', target: 40, achieved: 38 },
-    { name: 'Mar', target: 45, achieved: 41 },
-    { name: 'Apr', target: 50, achieved: 47 },
-    { name: 'May', target: 55, achieved: 52 },
-    { name: 'Jun', target: 60, achieved: 43 },
-  ];
-  
-  const conversionByChannelData = [
-    { name: 'Website', rate: 28 },
-    { name: 'Social Media', rate: 35 },
-    { name: 'Email', rate: 22 },
-    { name: 'Referral', rate: 42 },
-  ];
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      setIsLoading(true);
+      if (!user?.department) return;
 
-  const onSubmit = (data: any) => {
-    console.log(data);
-    setIsFormOpen(false);
-    // Here you would normally update the data in your backend
+      try {
+        // Fetch analytics data
+        const { data: metricsData, error: metricsError } = await supabase
+          .from('dashboard_metrics')
+          .select('*')
+          .eq('department', user.department);
+
+        if (metricsError) throw metricsError;
+
+        // Map metrics to the format needed for DataCard
+        if (metricsData) {
+          const analytics = metricsData.filter(metric => 
+            ['Total Leads Needed', 'Conversion Ratio', 'Spend-Revenue Ratio', 'Fresh Admissions'].includes(metric.metric_name)
+          ).map((metric, index) => ({
+            id: index.toString(),
+            title: metric.metric_name,
+            value: metric.metric_value,
+            percentChange: metric.percent_change,
+            trend: metric.trend,
+            icon: getIconForMetric(metric.metric_name)
+          }));
+          
+          setAnalyticsData(analytics);
+
+          const secondary = metricsData.filter(metric => 
+            ['Second EMI', 'ARPPU', 'CPL'].includes(metric.metric_name)
+          ).map((metric, index) => ({
+            id: (index + 5).toString(),
+            title: metric.metric_name,
+            value: metric.metric_value,
+            percentChange: metric.percent_change,
+            trend: metric.trend,
+            icon: getIconForMetric(metric.metric_name)
+          }));
+          
+          setSecondMetrics(secondary);
+        }
+
+        // Fetch chart data
+        const { data: chartsData, error: chartsError } = await supabase
+          .from('dashboard_charts')
+          .select('*')
+          .eq('department', user.department);
+
+        if (chartsError) throw chartsError;
+
+        if (chartsData) {
+          chartsData.forEach(chart => {
+            const chartData = JSON.parse(chart.chart_data);
+            switch (chart.chart_name) {
+              case 'Target Achievement':
+                setTargetAchievedData(chartData);
+                break;
+              case 'Monthly Performance':
+                setMonthlyPerformanceData(chartData);
+                break;
+              case 'Conversion by Channel':
+                setConversionByChannelData(chartData);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast({
+          title: "Error fetching data",
+          description: "Could not load dashboard data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMetrics();
+
+    // Set up real-time subscriptions
+    const channel = supabase
+      .channel('dashboard-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_metrics',
+          filter: `department=eq.${user?.department}`
+        },
+        (payload) => {
+          console.log('Metrics changed:', payload);
+          fetchMetrics();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_charts',
+          filter: `department=eq.${user?.department}`
+        },
+        (payload) => {
+          console.log('Charts changed:', payload);
+          fetchMetrics();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.department, toast]);
+
+  const getIconForMetric = (metricName) => {
+    switch (metricName) {
+      case 'Total Leads Needed':
+        return <Users className="h-5 w-5 text-primary" />;
+      case 'Conversion Ratio':
+        return <BarChart4 className="h-5 w-5 text-primary" />;
+      case 'Spend-Revenue Ratio':
+        return <TrendingUp className="h-5 w-5 text-primary" />;
+      case 'Fresh Admissions':
+        return <Zap className="h-5 w-5 text-primary" />;
+      case 'Second EMI':
+      case 'ARPPU':
+      case 'CPL':
+        return <DollarSign className="h-5 w-5 text-primary" />;
+      default:
+        return <Target className="h-5 w-5 text-primary" />;
+    }
   };
+
+  const onSubmit = async (data) => {
+    try {
+      // Update targets in Supabase
+      const updatedTargets = {
+        monthlyTarget: parseFloat(data.monthlyTarget),
+        paidUserTarget: parseInt(data.paidUserTarget),
+        leadCount: parseInt(data.leadCount)
+      };
+      
+      // Save to Supabase (in a real app, you'd save to a specific targets table)
+      const { error } = await supabase
+        .from('dashboard_metrics')
+        .update({ metric_value: updatedTargets.leadCount })
+        .eq('department', user?.department)
+        .eq('metric_name', 'Total Leads Needed');
+
+      if (error) throw error;
+
+      toast({
+        title: "Targets updated",
+        description: "Your new targets have been saved successfully.",
+      });
+      
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error('Error updating targets:', error);
+      toast({
+        title: "Error updating targets",
+        description: "Could not save your targets. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading dashboard data...</div>;
+  }
 
   return (
     <div className="space-y-8">

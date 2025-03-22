@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { UserRole } from '@/lib/types';
 import MasterAdminDashboard from '@/components/dashboard/MasterAdminDashboard';
@@ -8,9 +8,42 @@ import AccountsTeamDashboard from '@/components/dashboard/AccountsTeamDashboard'
 import GrowthTeamDashboard from '@/components/dashboard/GrowthTeamDashboard';
 import TeamLeadDashboard from '@/components/dashboard/TeamLeadDashboard';
 import ProjectLeadDashboard from '@/components/dashboard/ProjectLeadDashboard';
+import { useLocation } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import SimulateUpdatesButton from '@/components/dashboard/SimulateUpdatesButton';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const { toast } = useToast();
+  
+  // Extract department from URL if present
+  useEffect(() => {
+    const pathParts = location.pathname.split('/');
+    if (pathParts.length > 2 && pathParts[1] === 'projects') {
+      const department = pathParts[2].toUpperCase();
+      
+      if (!user) return;
+      
+      // If user is MASTER_ADMIN or ACCOUNTS_TEAM, they can view any department dashboard
+      if (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.ACCOUNTS_TEAM) {
+        toast({
+          title: `Viewing ${department} Dashboard`,
+          description: `You are now viewing the ${department} School dashboard`,
+        });
+      } 
+      // For other roles, check if they have permission to view this department
+      else if (user.department !== department) {
+        toast({
+          title: "Access Restricted",
+          description: `You can only view dashboards for your department: ${user.department}`,
+          variant: "destructive",
+        });
+        // Redirect to main dashboard (could use navigate but kept simple)
+        window.location.href = '/dashboard';
+      }
+    }
+  }, [location.pathname, user, toast]);
   
   const getDashboardTitle = () => {
     if (!user) return 'Dashboard';
@@ -62,14 +95,17 @@ const Dashboard = () => {
   
   return (
     <div className="space-y-8 animate-fade-in">
-      <header>
-        <h1 className="text-3xl font-bold">{getDashboardTitle()}</h1>
-        <p className="text-gray-500 mt-2">
-          Welcome back, {user?.name}. 
-          {user?.department && (
-            <span className="font-medium text-primary"> {getDepartmentName()}</span>
-          )}
-        </p>
+      <header className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">{getDashboardTitle()}</h1>
+          <p className="text-gray-500 mt-2">
+            Welcome back, {user?.name}. 
+            {user?.department && (
+              <span className="font-medium text-primary"> {getDepartmentName()}</span>
+            )}
+          </p>
+        </div>
+        <SimulateUpdatesButton />
       </header>
       
       {renderDashboard()}

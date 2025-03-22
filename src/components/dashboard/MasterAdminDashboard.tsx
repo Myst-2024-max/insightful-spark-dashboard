@@ -1,90 +1,175 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, Users, DollarSign, BarChart4, Zap, TrendingUp } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const MasterAdminDashboard = () => {
-  const analyticsData = [
-    {
-      id: '1',
-      title: 'Total Revenue',
-      value: 568000,
-      percentChange: 15.2,
-      trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '2',
-      title: 'Lead Count',
-      value: 4872,
-      percentChange: 8.7,
-      trend: 'up' as const,
-      icon: <Users className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '3',
-      title: 'Conversion Ratio',
-      value: 32.5,
-      percentChange: 3.6,
-      trend: 'up' as const,
-      icon: <BarChart4 className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '4',
-      title: 'Spend-Revenue Ratio',
-      value: 18.2,
-      percentChange: -2.1,
-      trend: 'down' as const,
-      icon: <TrendingUp className="h-5 w-5 text-primary" />,
-    },
-  ];
-  
-  const revenueBySchoolData = [
-    { name: 'CODING School', value: 215000 },
-    { name: 'DESIGN School', value: 142000 },
-    { name: 'MARKETING School', value: 122000 },
-    { name: 'FINANCE School', value: 89000 },
-  ];
-  
-  const admissionsTrendData = [
-    { name: 'Jan', CODING: 42, DESIGN: 28, MARKETING: 21, FINANCE: 18 },
-    { name: 'Feb', CODING: 38, DESIGN: 32, MARKETING: 24, FINANCE: 22 },
-    { name: 'Mar', CODING: 45, DESIGN: 35, MARKETING: 29, FINANCE: 19 },
-    { name: 'Apr', CODING: 51, DESIGN: 38, MARKETING: 31, FINANCE: 24 },
-    { name: 'May', CODING: 55, DESIGN: 42, MARKETING: 33, FINANCE: 27 },
-    { name: 'Jun', CODING: 49, DESIGN: 41, MARKETING: 35, FINANCE: 29 },
-  ];
-  
-  const keyMetricsData = [
-    {
-      id: '5',
-      title: 'Fresh Admissions',
-      value: 286,
-      percentChange: 12.4,
-      trend: 'up' as const,
-      icon: <Zap className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '6',
-      title: 'ARPPU',
-      value: 42500,
-      percentChange: 5.8,
-      trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
-    },
-    {
-      id: '7',
-      title: 'CPL',
-      value: 850,
-      percentChange: -3.2,
-      trend: 'down' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
+  const { toast } = useToast();
+  const [analyticsData, setAnalyticsData] = useState([]);
+  const [revenueBySchoolData, setRevenueBySchoolData] = useState([]);
+  const [admissionsTrendData, setAdmissionsTrendData] = useState([]);
+  const [keyMetricsData, setKeyMetricsData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch metrics data for the main analytics cards
+        const { data: metricsData, error: metricsError } = await supabase
+          .from('dashboard_metrics')
+          .select('*')
+          .eq('department', 'CODING'); // Default to CODING for master admin overview
+
+        if (metricsError) throw metricsError;
+
+        if (metricsData) {
+          const analytics = metricsData.filter(metric => 
+            ['Total Revenue', 'Lead Count', 'Conversion Ratio', 'Spend-Revenue Ratio'].includes(metric.metric_name)
+          ).map((metric, index) => ({
+            id: index.toString(),
+            title: metric.metric_name,
+            value: metric.metric_value,
+            percentChange: metric.percent_change,
+            trend: metric.trend,
+            icon: getIconForMetric(metric.metric_name)
+          }));
+          
+          setAnalyticsData(analytics);
+
+          const keyMetrics = metricsData.filter(metric => 
+            ['Fresh Admissions', 'ARPPU', 'CPL'].includes(metric.metric_name)
+          ).map((metric, index) => ({
+            id: (index + 5).toString(),
+            title: metric.metric_name,
+            value: metric.metric_value,
+            percentChange: metric.percent_change,
+            trend: metric.trend,
+            icon: getIconForMetric(metric.metric_name)
+          }));
+          
+          setKeyMetricsData(keyMetrics);
+        }
+
+        // Fetch chart data
+        const { data: chartsData, error: chartsError } = await supabase
+          .from('dashboard_charts')
+          .select('*')
+          .eq('department', 'CODING');
+
+        if (chartsError) throw chartsError;
+
+        if (chartsData) {
+          chartsData.forEach(chart => {
+            const chartData = JSON.parse(chart.chart_data);
+            switch (chart.chart_name) {
+              case 'Revenue by School':
+                setRevenueBySchoolData(chartData);
+                break;
+              case 'Admissions Trend':
+                setAdmissionsTrendData(chartData);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast({
+          title: "Error fetching data",
+          description: "Could not load dashboard data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+
+    // Set up real-time subscriptions for all departments since master admin can see all
+    const channel = supabase
+      .channel('dashboard-changes-master')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_metrics'
+        },
+        (payload) => {
+          console.log('Metrics changed:', payload);
+          fetchDashboardData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_charts'
+        },
+        (payload) => {
+          console.log('Charts changed:', payload);
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
+  const getIconForMetric = (metricName) => {
+    switch (metricName) {
+      case 'Total Revenue':
+      case 'ARPPU':
+      case 'CPL':
+        return <DollarSign className="h-5 w-5 text-primary" />;
+      case 'Lead Count':
+        return <Users className="h-5 w-5 text-primary" />;
+      case 'Conversion Ratio':
+        return <BarChart4 className="h-5 w-5 text-primary" />;
+      case 'Spend-Revenue Ratio':
+        return <TrendingUp className="h-5 w-5 text-primary" />;
+      case 'Fresh Admissions':
+        return <Zap className="h-5 w-5 text-primary" />;
+      default:
+        return <DollarSign className="h-5 w-5 text-primary" />;
     }
-  ];
+  };
+
+  const handleAddNewSchool = async () => {
+    // In a real app, this would navigate to a form or open a modal
+    toast({
+      title: "Feature Coming Soon",
+      description: "Adding new schools will be available in the next update.",
+    });
+  };
+
+  const handleAddNewProgram = async () => {
+    toast({
+      title: "Feature Coming Soon",
+      description: "Adding new programs will be available in the next update.",
+    });
+  };
+
+  const handleAddNewUser = async () => {
+    // In a real app, we would navigate to the user management page
+    window.location.href = '/user-management';
+  };
+
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading dashboard data...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -98,15 +183,15 @@ const MasterAdminDashboard = () => {
         <Card className="p-6 col-span-1">
           <h3 className="text-lg font-semibold mb-4">Add New</h3>
           <div className="space-y-4">
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={handleAddNewSchool}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add New School
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={handleAddNewProgram}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add New Program
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={handleAddNewUser}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add New User
             </Button>
@@ -151,16 +236,16 @@ const MasterAdminDashboard = () => {
           Access and manage all department dashboards from here.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Button variant="outline" className="justify-start">
+          <Button variant="outline" className="justify-start" onClick={() => window.location.href = '/sales-dashboard'}>
             Sales Dashboard
           </Button>
-          <Button variant="outline" className="justify-start">
+          <Button variant="outline" className="justify-start" onClick={() => window.location.href = '/growth-dashboard'}>
             Growth Dashboard
           </Button>
-          <Button variant="outline" className="justify-start">
+          <Button variant="outline" className="justify-start" onClick={() => window.location.href = '/accounts-dashboard'}>
             Accounts Dashboard
           </Button>
-          <Button variant="outline" className="justify-start">
+          <Button variant="outline" className="justify-start" onClick={() => window.location.href = '/team-lead-dashboard'}>
             Team Lead Dashboard
           </Button>
         </div>
