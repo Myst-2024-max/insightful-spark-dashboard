@@ -25,6 +25,9 @@ const DataCard: React.FC<DataCardProps> = ({ data, className }) => {
     neutral: 'text-gray-400'
   };
   
+  // Create an Icon component from the icon prop
+  const IconComponent = icon;
+  
   return (
     <CustomCard className={cn("p-6 h-full", className)}>
       <div className="flex justify-between items-start">
@@ -44,7 +47,7 @@ const DataCard: React.FC<DataCardProps> = ({ data, className }) => {
         </div>
         {icon && (
           <div className="p-2 bg-primary-50 rounded-lg">
-            {icon}
+            <IconComponent className="h-5 w-5 text-primary" />
           </div>
         )}
       </div>

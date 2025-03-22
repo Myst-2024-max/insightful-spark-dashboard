@@ -1,25 +1,24 @@
-
-import { DollarSign, Users, BarChart4, Zap, TrendingUp, Target } from 'lucide-react';
+import { DollarSign, Users, BarChart4, Zap, TrendingUp, Target, LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const getIconForMetric = (metricName: string) => {
+export const getIconForMetric = (metricName: string): LucideIcon => {
   switch (metricName) {
     case 'Total Revenue':
     case 'ARPPU':
     case 'CPL':
     case 'Second EMI':
-      return <DollarSign className="h-5 w-5 text-primary" />;
+      return DollarSign;
     case 'Lead Count':
     case 'Total Leads Needed':
-      return <Users className="h-5 w-5 text-primary" />;
+      return Users;
     case 'Conversion Ratio':
-      return <BarChart4 className="h-5 w-5 text-primary" />;
+      return BarChart4;
     case 'Spend-Revenue Ratio':
-      return <TrendingUp className="h-5 w-5 text-primary" />;
+      return TrendingUp;
     case 'Fresh Admissions':
-      return <Zap className="h-5 w-5 text-primary" />;
+      return Zap;
     default:
-      return <Target className="h-5 w-5 text-primary" />;
+      return Target;
   }
 };
 
