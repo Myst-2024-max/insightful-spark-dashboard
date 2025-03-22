@@ -1,26 +1,11 @@
 
-import React, { useState } from 'react';
-import { DollarSign, Target, BarChart4, Users } from 'lucide-react';
+import React from 'react';
+import { DollarSign, Target, BarChart4, Users, Briefcase } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
 
 const SalesExecutiveDashboard = () => {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const form = useForm({
-    defaultValues: {
-      incentiveTarget: '',
-      achievedRevenue: '',
-      leadsAssigned: '',
-      salesUnit: ''
-    },
-  });
-
   const analyticsData = [
     {
       id: '1',
@@ -54,6 +39,14 @@ const SalesExecutiveDashboard = () => {
       trend: 'neutral' as const,
       icon: Target,
     },
+    {
+      id: '5',
+      title: 'Sales Unit',
+      value: 'Team A',
+      percentChange: 0,
+      trend: 'neutral' as const,
+      icon: Briefcase,
+    },
   ];
   
   const incentiveData = [
@@ -72,91 +65,15 @@ const SalesExecutiveDashboard = () => {
     { name: 'Week 8', Conversion: 35 },
   ];
 
-  const onSubmit = (data: any) => {
-    console.log(data);
-    setIsFormOpen(false);
-    // Here you would normally update the data in your backend
-  };
-
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {analyticsData.map(data => (
           <DataCard key={data.id} data={data} />
         ))}
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <CardHeader className="px-0 pt-0">
-            <CardTitle>Input Sales Data</CardTitle>
-          </CardHeader>
-          <CardContent className="px-0 pb-0">
-            {!isFormOpen ? (
-              <Button onClick={() => setIsFormOpen(true)}>Add New Data</Button>
-            ) : (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="incentiveTarget"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Incentive Target (₹)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="150000" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="achievedRevenue"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Achieved Revenue (₹)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="125000" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="leadsAssigned"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Leads Assigned</FormLabel>
-                        <FormControl>
-                          <Input placeholder="145" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="salesUnit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sales Unit</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Team A" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex space-x-2">
-                    <Button type="submit">Save</Button>
-                    <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            )}
-          </CardContent>
-        </Card>
-        
         <ChartCard 
           title="Incentive Achievement" 
           subtitle="Percentage of target achieved"
@@ -165,9 +82,7 @@ const SalesExecutiveDashboard = () => {
           dataKey="value"
           colors={['#0159FF', '#E6EFFF']}
         />
-      </div>
-      
-      <div className="grid grid-cols-1 gap-6">
+        
         <ChartCard 
           title="Conversion Ratio Trend" 
           subtitle="Weekly conversion ratio"
