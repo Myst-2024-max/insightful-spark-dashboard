@@ -28,7 +28,7 @@ const SalesExecutiveDashboard = () => {
       value: 125000,
       percentChange: 8.5,
       trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
+      icon: DollarSign,
     },
     {
       id: '2',
@@ -36,7 +36,7 @@ const SalesExecutiveDashboard = () => {
       value: 145,
       percentChange: 12.4,
       trend: 'up' as const,
-      icon: <Users className="h-5 w-5 text-primary" />,
+      icon: Users,
     },
     {
       id: '3',
@@ -44,7 +44,7 @@ const SalesExecutiveDashboard = () => {
       value: 28.4,
       percentChange: 3.2,
       trend: 'up' as const,
-      icon: <BarChart4 className="h-5 w-5 text-primary" />,
+      icon: BarChart4,
     },
     {
       id: '4',
@@ -52,7 +52,7 @@ const SalesExecutiveDashboard = () => {
       value: 150000,
       percentChange: 0,
       trend: 'neutral' as const,
-      icon: <Target className="h-5 w-5 text-primary" />,
+      icon: Target,
     },
   ];
   

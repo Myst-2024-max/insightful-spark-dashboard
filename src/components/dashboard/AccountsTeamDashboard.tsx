@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DollarSign, Users, BookOpen, Calendar } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
@@ -33,7 +32,7 @@ const AccountsTeamDashboard = () => {
       value: 425000,
       percentChange: 12.5,
       trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
+      icon: DollarSign,
     },
     {
       id: '2',
@@ -41,7 +40,7 @@ const AccountsTeamDashboard = () => {
       value: 875,
       percentChange: 8.1,
       trend: 'up' as const,
-      icon: <Users className="h-5 w-5 text-primary" />,
+      icon: Users,
     },
     {
       id: '3',
@@ -49,7 +48,7 @@ const AccountsTeamDashboard = () => {
       value: 42,
       percentChange: 4.5,
       trend: 'up' as const,
-      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      icon: BookOpen,
     },
     {
       id: '4',
@@ -57,7 +56,7 @@ const AccountsTeamDashboard = () => {
       value: 56,
       percentChange: 0,
       trend: 'neutral' as const,
-      icon: <Calendar className="h-5 w-5 text-primary" />,
+      icon: Calendar,
     },
   ];
   

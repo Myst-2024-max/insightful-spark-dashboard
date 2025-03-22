@@ -28,7 +28,7 @@ const TeamLeadDashboard = () => {
       value: 324,
       percentChange: 12.5,
       trend: 'up' as const,
-      icon: <Users className="h-5 w-5 text-primary" />,
+      icon: Users,
     },
     {
       id: '2',
@@ -36,7 +36,7 @@ const TeamLeadDashboard = () => {
       value: 16.8,
       percentChange: -2.3,
       trend: 'down' as const,
-      icon: <TrendingUp className="h-5 w-5 text-primary" />,
+      icon: TrendingUp,
     },
     {
       id: '3',
@@ -44,7 +44,7 @@ const TeamLeadDashboard = () => {
       value: 118000,
       percentChange: 8.7,
       trend: 'up' as const,
-      icon: <Zap className="h-5 w-5 text-primary" />,
+      icon: Zap,
     },
     {
       id: '4',
@@ -52,7 +52,7 @@ const TeamLeadDashboard = () => {
       value: 45000,
       percentChange: 5.2,
       trend: 'up' as const,
-      icon: <DollarSign className="h-5 w-5 text-primary" />,
+      icon: DollarSign,
     },
   ];
   
