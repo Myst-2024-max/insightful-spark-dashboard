@@ -1,16 +1,43 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { UserRole } from '@/lib/types';
+import { UserRole, SchoolDepartment } from '@/lib/types';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
 import { Users, DollarSign, TrendingUp, Award } from 'lucide-react';
 
 const Dashboard = () => {
-  const { user, checkUserPermission } = useAuth();
+  const { user, checkUserPermission, canViewAllDepartments } = useAuth();
+  const [departmentData, setDepartmentData] = useState<any>(null);
   
-  // Sample analytics data
+  useEffect(() => {
+    if (!user) return;
+    
+    if (canViewAllDepartments()) {
+      setDepartmentData(null);
+      return;
+    }
+    
+    if (user.department) {
+      const deptName = user.department;
+      
+      const filteredEnrollmentData = enrollmentData.map(item => {
+        const newItem: any = { name: item.name };
+        newItem[deptName] = item[deptName as keyof typeof item];
+        return newItem;
+      });
+      
+      const filteredDistributionData = schoolDistributionData.filter(
+        item => item.name.startsWith(deptName)
+      );
+      
+      setDepartmentData({
+        enrollmentData: filteredEnrollmentData,
+        distributionData: filteredDistributionData
+      });
+    }
+  }, [user, canViewAllDepartments]);
+  
   const analyticsData = [
     {
       id: '1',
@@ -46,7 +73,6 @@ const Dashboard = () => {
     },
   ];
   
-  // Sample chart data
   const monthlyRevenueData = [
     { name: 'Jan', value: 42000 },
     { name: 'Feb', value: 38000 },
@@ -63,19 +89,19 @@ const Dashboard = () => {
   ];
   
   const enrollmentData = [
-    { name: 'Jan', Coding: 120, Design: 85, Marketing: 65, Finance: 45 },
-    { name: 'Feb', Coding: 132, Design: 78, Marketing: 72, Finance: 53 },
-    { name: 'Mar', Coding: 145, Design: 92, Marketing: 81, Finance: 61 },
-    { name: 'Apr', Coding: 158, Design: 102, Marketing: 87, Finance: 65 },
-    { name: 'May', Coding: 172, Design: 110, Marketing: 93, Finance: 71 },
-    { name: 'Jun', Coding: 168, Design: 105, Marketing: 95, Finance: 74 },
+    { name: 'Jan', CODING: 120, DESIGN: 85, MARKETING: 65, FINANCE: 45 },
+    { name: 'Feb', CODING: 132, DESIGN: 78, MARKETING: 72, FINANCE: 53 },
+    { name: 'Mar', CODING: 145, DESIGN: 92, MARKETING: 81, FINANCE: 61 },
+    { name: 'Apr', CODING: 158, DESIGN: 102, MARKETING: 87, FINANCE: 65 },
+    { name: 'May', CODING: 172, DESIGN: 110, MARKETING: 93, FINANCE: 71 },
+    { name: 'Jun', CODING: 168, DESIGN: 105, MARKETING: 95, FINANCE: 74 },
   ];
   
   const schoolDistributionData = [
-    { name: 'Coding School', value: 42 },
-    { name: 'Design School', value: 28 },
-    { name: 'Marketing School', value: 18 },
-    { name: 'Finance School', value: 12 },
+    { name: 'CODING School', value: 42 },
+    { name: 'DESIGN School', value: 28 },
+    { name: 'MARKETING School', value: 18 },
+    { name: 'FINANCE School', value: 12 },
   ];
   
   const performanceData = [
@@ -89,7 +115,6 @@ const Dashboard = () => {
     { name: 'Week 8', Actual: 95, Target: 90 },
   ];
   
-  // Get dashboard title based on user role
   const getDashboardTitle = () => {
     if (!user) return 'Dashboard';
     
@@ -111,23 +136,29 @@ const Dashboard = () => {
     }
   };
   
+  const getDepartmentName = () => {
+    if (!user?.department) return '';
+    return `${user.department} School`;
+  };
+  
   return (
     <div className="space-y-8 animate-fade-in">
       <header>
         <h1 className="text-3xl font-bold">{getDashboardTitle()}</h1>
         <p className="text-gray-500 mt-2">
-          Welcome back, {user?.name}. Here's what's happening today.
+          Welcome back, {user?.name}. 
+          {!canViewAllDepartments() && user?.department && (
+            <span className="font-medium text-primary"> You are viewing data for {getDepartmentName()}.</span>
+          )}
         </p>
       </header>
       
-      {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {analyticsData.map(data => (
           <DataCard key={data.id} data={data} />
         ))}
       </div>
       
-      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard 
           title="Monthly Revenue" 
@@ -139,8 +170,10 @@ const Dashboard = () => {
         
         <ChartCard 
           title="School Enrollment Distribution" 
-          subtitle="Current student distribution by school"
-          data={schoolDistributionData}
+          subtitle={canViewAllDepartments() 
+            ? "Current student distribution by school" 
+            : `Current student distribution for ${getDepartmentName()}`}
+          data={departmentData?.distributionData || schoolDistributionData}
           type="pie"
           dataKey="value"
           colors={['#0159FF', '#3385FF', '#66A3FF', '#99C2FF']}
@@ -150,11 +183,15 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard 
           title="School Enrollment Trends" 
-          subtitle="Monthly enrollment by school"
-          data={enrollmentData}
+          subtitle={canViewAllDepartments()
+            ? "Monthly enrollment by school" 
+            : `Monthly enrollment for ${getDepartmentName()}`}
+          data={departmentData?.enrollmentData || enrollmentData}
           type="bar"
           dataKey="name"
-          categories={['Coding', 'Design', 'Marketing', 'Finance']}
+          categories={canViewAllDepartments() 
+            ? ['CODING', 'DESIGN', 'MARKETING', 'FINANCE'] 
+            : user?.department ? [user.department] : []}
           colors={['#0159FF', '#3385FF', '#66A3FF', '#99C2FF']}
         />
         
@@ -169,7 +206,6 @@ const Dashboard = () => {
         />
       </div>
       
-      {/* Role-specific content */}
       {checkUserPermission(UserRole.MASTER_ADMIN) && (
         <CustomCard>
           <h2 className="text-xl font-semibold mb-4">Administrative Tools</h2>
