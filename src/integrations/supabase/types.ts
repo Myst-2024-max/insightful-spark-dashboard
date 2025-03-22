@@ -9,6 +9,66 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      dashboard_charts: {
+        Row: {
+          chart_data: Json
+          chart_name: string
+          created_at: string | null
+          department: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          chart_data: Json
+          chart_name: string
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          chart_data?: Json
+          chart_name?: string
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      dashboard_metrics: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          id: string
+          metric_name: string
+          metric_value: number
+          percent_change: number | null
+          trend: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          metric_name: string
+          metric_value: number
+          percent_change?: number | null
+          trend?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          metric_name?: string
+          metric_value?: number
+          percent_change?: number | null
+          trend?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       haca_users: {
         Row: {
           active: boolean
