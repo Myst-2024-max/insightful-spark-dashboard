@@ -25,6 +25,7 @@ export interface User {
   role: UserRole;
   department?: SchoolDepartment;
   avatar?: string;
+  teamLeadId?: string; // Reference to team lead for sales executives
 }
 
 // Authentication state
@@ -52,4 +53,14 @@ export interface ChartData {
   name: string;
   value: number;
   [key: string]: any;
+}
+
+// Sales Executive Performance interface
+export interface SalesExecutivePerformance {
+  id: string;
+  name: string;
+  targetValue: number;
+  achievedValue: number;
+  achievementPercentage: number;
+  trend: 'up' | 'down' | 'neutral';
 }
