@@ -26,6 +26,7 @@ export interface User {
   department?: SchoolDepartment;
   avatar?: string;
   teamLeadId?: string; // Reference to team lead for sales executives
+  teamName?: string; // Added for UI display purposes
 }
 
 // Authentication state
@@ -63,4 +64,12 @@ export interface SalesExecutivePerformance {
   achievedValue: number;
   achievementPercentage: number;
   trend: 'up' | 'down' | 'neutral';
+}
+
+// Team interface
+export interface Team {
+  id: string;
+  name: string;
+  leadId: string;
+  leadName: string;
 }

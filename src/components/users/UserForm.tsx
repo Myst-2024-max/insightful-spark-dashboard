@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,6 +37,12 @@ interface HacaUser {
   avatar: string | null;
   active: boolean;
   created_at: string;
+  team_lead_id?: string;
+}
+
+interface TeamLead {
+  id: string;
+  name: string;
 }
 
 interface UserFormProps {
@@ -60,11 +66,37 @@ const formSchema = z.object({
     message: "Password must be at least 6 characters.",
   }).or(z.literal('')),
   avatar: z.string().nullable().optional(),
+  teamLeadId: z.string().nullable().optional(),
 });
 
 const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) => {
   const isEditing = !!existingUser;
   const { user } = useAuth();
+  const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
+
+  // Fetch team leads on component mount
+  useEffect(() => {
+    fetchTeamLeads();
+  }, []);
+
+  const fetchTeamLeads = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('haca_users')
+        .select('id, name')
+        .eq('role', UserRole.TEAM_LEAD)
+        .eq('active', true);
+
+      if (error) {
+        console.error('Error fetching team leads:', error);
+        return;
+      }
+
+      setTeamLeads(data || []);
+    } catch (error) {
+      console.error('Error in fetchTeamLeads:', error);
+    }
+  };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -75,19 +107,26 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       department: existingUser?.department || null,
       password: '',
       avatar: existingUser?.avatar || null,
+      teamLeadId: existingUser?.team_lead_id || null,
     },
   });
 
-  // Watch for role changes to handle department field
+  // Watch for role changes to handle department and teamLead fields
   const selectedRole = form.watch('role');
   const needsDepartment = selectedRole === UserRole.PROJECT_LEAD;
+  const needsTeamLead = selectedRole === UserRole.SALES_EXECUTIVE;
   
   // Effect to reset department if not a project lead
   useEffect(() => {
     if (!needsDepartment && form.getValues('department')) {
       form.setValue('department', null);
     }
-  }, [needsDepartment, form]);
+    
+    // Reset teamLeadId if not a sales executive
+    if (!needsTeamLead && form.getValues('teamLeadId')) {
+      form.setValue('teamLeadId', null);
+    }
+  }, [needsDepartment, needsTeamLead, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -108,11 +147,22 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         toast.error('Project Lead must have a department assigned');
         return;
       }
+      
+      // Convert teamLeadId to team_lead_id for database
+      const dbUserData = {
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        password: userData.password,
+        department: userData.department,
+        avatar: userData.avatar,
+        team_lead_id: userData.teamLeadId
+      };
 
       if (isEditing) {
         const { error } = await supabase
           .from('haca_users')
-          .update(userData)
+          .update(dbUserData)
           .eq('id', existingUser.id);
 
         if (error) {
@@ -124,12 +174,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       } else {
         // Fix: When creating a new user, ensure all required fields are present
         const newUser = {
-          name: userData.name,
-          email: userData.email,
-          role: userData.role,
-          password: userData.password,
-          department: userData.department,
-          avatar: userData.avatar,
+          ...dbUserData,
           active: true,
           // Add created_by field to track who created this user
           created_by: user?.id
@@ -165,6 +210,15 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
           <Info className="h-4 w-4" />
           <AlertDescription>
             Project Leads must be assigned to a specific school department
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {needsTeamLead && (
+        <Alert className="mb-6 bg-blue-50">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Sales Executives must be assigned to a Team Lead
           </AlertDescription>
         </Alert>
       )}
@@ -250,6 +304,42 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
                             {dept} School
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            {needsTeamLead && (
+              <FormField
+                control={form.control}
+                name="teamLeadId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Team Lead</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value || undefined}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a team lead" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {teamLeads.length === 0 ? (
+                          <SelectItem value="no-leads" disabled>
+                            No team leads available
+                          </SelectItem>
+                        ) : (
+                          teamLeads.map((lead) => (
+                            <SelectItem key={lead.id} value={lead.id}>
+                              {lead.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />

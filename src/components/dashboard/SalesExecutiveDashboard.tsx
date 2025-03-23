@@ -1,20 +1,53 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, Target, BarChart4, Users, Briefcase, Database, Zap, UserCircle } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/components/auth/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const SalesExecutiveDashboard = () => {
   const [timeFilter, setTimeFilter] = useState('all');
+  const [teamLead, setTeamLead] = useState({
+    id: '',
+    name: '',
+    title: 'Team Lead',
+  });
+  const { user } = useAuth();
 
-  // Sample data for team lead
-  const teamLead = {
-    id: 'team-lead-1',
-    name: 'Alex Rodriguez',
-    title: 'Senior Team Lead',
+  // Fetch team lead info when dashboard loads
+  useEffect(() => {
+    if (user?.teamLeadId) {
+      fetchTeamLeadInfo(user.teamLeadId);
+    }
+  }, [user]);
+
+  const fetchTeamLeadInfo = async (teamLeadId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('haca_users')
+        .select('id, name')
+        .eq('id', teamLeadId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching team lead info:', error);
+        return;
+      }
+
+      if (data) {
+        setTeamLead({
+          id: data.id,
+          name: data.name,
+          title: 'Senior Team Lead',
+        });
+      }
+    } catch (error) {
+      console.error('Error in fetchTeamLeadInfo:', error);
+    }
   };
 
   const analyticsData = [
@@ -138,16 +171,18 @@ const SalesExecutiveDashboard = () => {
       </div>
       
       {/* Team Lead Information */}
-      <Card className="mb-6">
-        <CardContent className="p-4 flex items-center">
-          <UserCircle className="h-10 w-10 mr-4 text-primary" />
-          <div>
-            <p className="text-sm text-gray-500">Team Lead</p>
-            <p className="font-medium">{teamLead.name}</p>
-            <p className="text-xs text-gray-500">{teamLead.title}</p>
-          </div>
-        </CardContent>
-      </Card>
+      {teamLead.id && (
+        <Card className="mb-6">
+          <CardContent className="p-4 flex items-center">
+            <UserCircle className="h-10 w-10 mr-4 text-primary" />
+            <div>
+              <p className="text-sm text-gray-500">Team Lead</p>
+              <p className="font-medium">{teamLead.name}</p>
+              <p className="text-xs text-gray-500">{teamLead.title}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredData.map(data => (
