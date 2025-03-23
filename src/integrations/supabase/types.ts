@@ -81,6 +81,7 @@ export type Database = {
           name: string
           password: string
           role: string
+          team_lead_id: string | null
         }
         Insert: {
           active?: boolean
@@ -93,6 +94,7 @@ export type Database = {
           name: string
           password: string
           role: string
+          team_lead_id?: string | null
         }
         Update: {
           active?: boolean
@@ -105,8 +107,17 @@ export type Database = {
           name?: string
           password?: string
           role?: string
+          team_lead_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "haca_users_team_lead_id_fkey"
+            columns: ["team_lead_id"]
+            isOneToOne: false
+            referencedRelation: "haca_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

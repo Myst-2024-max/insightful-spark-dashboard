@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const SalesExecutiveDashboard = () => {
   const [timeFilter, setTimeFilter] = useState('all');
@@ -17,11 +18,18 @@ const SalesExecutiveDashboard = () => {
     title: 'Team Lead',
   });
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Fetch team lead info when dashboard loads
   useEffect(() => {
     if (user?.teamLeadId) {
       fetchTeamLeadInfo(user.teamLeadId);
+    } else {
+      toast({
+        title: "No Team Assigned",
+        description: "You are not currently assigned to a team.",
+        variant: "default",
+      });
     }
   }, [user]);
 
@@ -35,6 +43,11 @@ const SalesExecutiveDashboard = () => {
 
       if (error) {
         console.error('Error fetching team lead info:', error);
+        toast({
+          title: "Error",
+          description: "Could not fetch team lead information.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -43,6 +56,11 @@ const SalesExecutiveDashboard = () => {
           id: data.id,
           name: data.name,
           title: 'Senior Team Lead',
+        });
+        
+        toast({
+          title: "Team Information",
+          description: `You are assigned to ${data.name}'s team.`,
         });
       }
     } catch (error) {
@@ -171,7 +189,7 @@ const SalesExecutiveDashboard = () => {
       </div>
       
       {/* Team Lead Information */}
-      {teamLead.id && (
+      {teamLead.id ? (
         <Card className="mb-6">
           <CardContent className="p-4 flex items-center">
             <UserCircle className="h-10 w-10 mr-4 text-primary" />
@@ -180,6 +198,12 @@ const SalesExecutiveDashboard = () => {
               <p className="font-medium">{teamLead.name}</p>
               <p className="text-xs text-gray-500">{teamLead.title}</p>
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="mb-6 bg-yellow-50">
+          <CardContent className="p-4">
+            <p className="text-amber-600">You are not currently assigned to any team. Please contact an administrator.</p>
           </CardContent>
         </Card>
       )}
