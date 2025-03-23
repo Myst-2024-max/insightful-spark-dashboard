@@ -2,16 +2,21 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import CustomCard from '@/components/ui/CustomCard';
-import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from 'lucide-react';
-import { AnalyticsData } from '@/lib/types';
+import { ArrowUpIcon, ArrowDownIcon, MinusIcon, LucideIcon } from 'lucide-react';
 
 interface DataCardProps {
-  data: AnalyticsData;
+  data: {
+    title: string;
+    value: number | string;
+    percentChange: number;
+    trend: 'up' | 'down' | 'neutral';
+    icon: LucideIcon;
+  };
   className?: string;
 }
 
 const DataCard: React.FC<DataCardProps> = ({ data, className }) => {
-  const { title, value, percentChange, trend, icon } = data;
+  const { title, value, percentChange, trend, icon: Icon } = data;
   
   const trendIcon = {
     up: <ArrowUpIcon className="h-4 w-4 text-green-500" />,
@@ -24,9 +29,6 @@ const DataCard: React.FC<DataCardProps> = ({ data, className }) => {
     down: 'text-red-500',
     neutral: 'text-gray-400'
   };
-  
-  // Use the icon prop, which should be a Lucide component
-  const IconComponent = icon;
   
   return (
     <CustomCard className={cn("p-6 h-full", className)}>
@@ -45,9 +47,9 @@ const DataCard: React.FC<DataCardProps> = ({ data, className }) => {
             </span>
           </div>
         </div>
-        {icon && (
+        {Icon && (
           <div className="p-2 bg-primary-50 rounded-lg">
-            {React.createElement(IconComponent, { className: "h-5 w-5 text-primary" })}
+            <Icon className="h-5 w-5 text-primary" />
           </div>
         )}
       </div>

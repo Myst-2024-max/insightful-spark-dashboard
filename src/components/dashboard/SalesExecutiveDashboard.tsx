@@ -84,7 +84,7 @@ const SalesExecutiveDashboard = () => {
   ];
   
   // Custom rendering function for pie chart labels
-  const renderCustomizedLabel = (props: any) => {
+  const renderCustomizedLabel = (props) => {
     const { cx, cy, midAngle, innerRadius, outerRadius, percent, index } = props;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.7;
     const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
