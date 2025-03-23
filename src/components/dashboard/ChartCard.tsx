@@ -16,7 +16,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Cell
+  Cell,
+  Label
 } from 'recharts';
 
 interface ChartCardProps {
@@ -29,6 +30,7 @@ interface ChartCardProps {
   colors?: string[];
   className?: string;
   height?: number;
+  labelFormatter?: (props: any) => JSX.Element;
 }
 
 const ChartCard: React.FC<ChartCardProps> = ({ 
@@ -40,7 +42,8 @@ const ChartCard: React.FC<ChartCardProps> = ({
   categories = ['value'],
   colors = ['rgb(1, 90, 255)'],
   className,
-  height = 300
+  height = 300,
+  labelFormatter
 }) => {
   // Default color palette
   const defaultColors = [
@@ -184,6 +187,12 @@ const ChartCard: React.FC<ChartCardProps> = ({
                 outerRadius={90}
                 paddingAngle={2}
                 dataKey={dataKey}
+                label={labelFormatter ? labelFormatter : {
+                  fill: 'var(--foreground)',
+                  fontSize: 12,
+                  offset: 10,
+                }}
+                labelLine={false}
               >
                 {data.map((entry, index) => (
                   <Cell 
@@ -191,6 +200,12 @@ const ChartCard: React.FC<ChartCardProps> = ({
                     fill={chartColors[index % chartColors.length]} 
                   />
                 ))}
+                <Label 
+                  value="83%" 
+                  position="center" 
+                  fill="var(--foreground)" 
+                  style={{ fontSize: '24px', fontWeight: 'bold' }}
+                />
               </Pie>
               <Tooltip 
                 contentStyle={{ 

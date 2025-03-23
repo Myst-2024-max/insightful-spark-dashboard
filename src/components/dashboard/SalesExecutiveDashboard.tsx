@@ -1,11 +1,14 @@
 
-import React from 'react';
-import { DollarSign, Target, BarChart4, Users, Briefcase } from 'lucide-react';
+import React, { useState } from 'react';
+import { DollarSign, Target, BarChart4, Users, Briefcase, Database, Zap } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const SalesExecutiveDashboard = () => {
+  const [timeFilter, setTimeFilter] = useState('all');
+
   const analyticsData = [
     {
       id: '1',
@@ -47,33 +50,92 @@ const SalesExecutiveDashboard = () => {
       trend: 'neutral' as const,
       icon: Briefcase,
     },
+    {
+      id: '6',
+      title: 'Cumulative Revenue',
+      value: 450000,
+      percentChange: 15.2,
+      trend: 'up' as const,
+      icon: Database,
+    },
+    {
+      id: '7',
+      title: 'Fresh Revenue',
+      value: 75000,
+      percentChange: 5.8,
+      trend: 'up' as const,
+      icon: Zap,
+    },
   ];
   
+  // Filter data based on time period
+  const getFilteredData = () => {
+    // In a real implementation, this would filter data based on the selected time period
+    // For this example, we'll just return the original data
+    return analyticsData;
+  };
+  
+  const filteredData = getFilteredData();
+  
+  // Incentive achievement data with percentage labels
   const incentiveData = [
-    { name: 'Achieved', value: 83 },
-    { name: 'Remaining', value: 17 },
+    { name: 'Achieved (83%)', value: 83, percentage: '83%' },
+    { name: 'Remaining (17%)', value: 17, percentage: '17%' },
   ];
   
-  const conversionTrendData = [
-    { name: 'Week 1', Conversion: 24 },
-    { name: 'Week 2', Conversion: 26 },
-    { name: 'Week 3', Conversion: 29 },
-    { name: 'Week 4', Conversion: 27 },
-    { name: 'Week 5', Conversion: 32 },
-    { name: 'Week 6', Conversion: 31 },
-    { name: 'Week 7', Conversion: 34 },
-    { name: 'Week 8', Conversion: 35 },
-  ];
+  // Custom rendering function for pie chart labels
+  const renderCustomizedLabel = (props: any) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent, index } = props;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.7;
+    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+    
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="white" 
+        textAnchor={x > cx ? 'start' : 'end'} 
+        dominantBaseline="central"
+        fontSize={13}
+        fontWeight="bold"
+      >
+        {incentiveData[index].percentage}
+      </text>
+    );
+  };
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {analyticsData.map(data => (
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Sales Executive Dashboard</h2>
+        <div className="w-48">
+          <Select 
+            value={timeFilter} 
+            onValueChange={setTimeFilter}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="quarter">This Quarter</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredData.map(data => (
           <DataCard key={data.id} data={data} />
         ))}
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <ChartCard 
           title="Incentive Achievement" 
           subtitle="Percentage of target achieved"
@@ -81,16 +143,7 @@ const SalesExecutiveDashboard = () => {
           type="pie"
           dataKey="value"
           colors={['#0159FF', '#E6EFFF']}
-        />
-        
-        <ChartCard 
-          title="Conversion Ratio Trend" 
-          subtitle="Weekly conversion ratio"
-          data={conversionTrendData}
-          type="line"
-          dataKey="name"
-          categories={['Conversion']}
-          colors={['#0159FF']}
+          labelFormatter={renderCustomizedLabel}
         />
       </div>
     </div>
