@@ -1,31 +1,19 @@
 
-import React, { useState, useEffect } from 'react';
-import { Users, Target, DollarSign, TrendingUp, Zap, UserCircle, Award } from 'lucide-react';
-import CustomCard from '@/components/ui/CustomCard';
+import React, { useState } from 'react';
+import { Users, Target, DollarSign, TrendingUp, Zap } from 'lucide-react';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SalesExecutivePerformance } from '@/lib/types';
+import TeamLeadTargetForm from '@/components/dashboard/TeamLeadTargetForm';
+import ExecutivePerformanceView from '@/components/dashboard/ExecutivePerformanceView';
+import ExecutivesList from '@/components/dashboard/ExecutivesList';
 
 const TeamLeadDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedExecutive, setSelectedExecutive] = useState<string | null>(null);
   
-  const form = useForm({
-    defaultValues: {
-      salesExecutive: '',
-      leadTarget: '',
-      incentiveTarget: ''
-    },
-  });
-
   // Mock data for sales executives under this team lead
   const salesExecutives = [
     { id: 'exec1', name: 'John Smith' },
@@ -140,15 +128,21 @@ const TeamLeadDashboard = () => {
     { name: 'Jun', ratio: 35 },
   ];
 
-  const onSubmit = (data: any) => {
+  const handleFormSubmit = (data: any) => {
     console.log(data);
     setIsFormOpen(false);
     // Here you would normally update the data in your backend
   };
   
-  // Get performance for a specific executive
-  const getExecutivePerformance = (execId: string) => {
-    return executivePerformance.find(exec => exec.id === execId) || null;
+  const handleUpdateTargets = (executiveId: string) => {
+    // Find the executive data to pre-fill the form
+    const exec = executivePerformance.find(e => e.id === executiveId);
+    if (exec) {
+      // Switch to dashboard view and open the form
+      setActiveView('dashboard');
+      setIsFormOpen(true);
+      // Pre-fill form data would be handled here in a real implementation
+    }
   };
 
   return (
@@ -167,72 +161,12 @@ const TeamLeadDashboard = () => {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <Card className="p-6">
-              <CardHeader className="px-0 pt-0">
-                <CardTitle>Set Targets</CardTitle>
-              </CardHeader>
-              <CardContent className="px-0 pb-0">
-                {!isFormOpen ? (
-                  <Button onClick={() => setIsFormOpen(true)}>Set New Target</Button>
-                ) : (
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="salesExecutive"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Sales Executive</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select executive" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {salesExecutives.map(exec => (
-                                  <SelectItem key={exec.id} value={exec.id}>{exec.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="leadTarget"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Lead Target</FormLabel>
-                            <FormControl>
-                              <Input placeholder="45" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="incentiveTarget"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Incentive Target (₹)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="120000" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex space-x-2">
-                        <Button type="submit">Save Target</Button>
-                        <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                )}
-              </CardContent>
-            </Card>
+            <TeamLeadTargetForm 
+              isFormOpen={isFormOpen}
+              setIsFormOpen={setIsFormOpen}
+              salesExecutives={salesExecutives}
+              onSubmit={handleFormSubmit}
+            />
             
             <ChartCard 
               title="Target vs Achieved" 
@@ -271,99 +205,19 @@ const TeamLeadDashboard = () => {
         <TabsContent value="executives" className="mt-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sales Executives</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {salesExecutives.map(exec => (
-                      <Button 
-                        key={exec.id} 
-                        variant={selectedExecutive === exec.id ? "default" : "outline"} 
-                        className="w-full justify-start"
-                        onClick={() => setSelectedExecutive(exec.id)}
-                      >
-                        <UserCircle className="mr-2 h-4 w-4" />
-                        {exec.name}
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <ExecutivesList 
+                salesExecutives={salesExecutives}
+                selectedExecutive={selectedExecutive}
+                onSelectExecutive={setSelectedExecutive}
+              />
             </div>
             
             <div className="lg:col-span-2">
-              {selectedExecutive ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      {getExecutivePerformance(selectedExecutive)?.name}'s Performance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {getExecutivePerformance(selectedExecutive) && (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <DataCard 
-                            data={{
-                              title: "Target Value",
-                              value: getExecutivePerformance(selectedExecutive)!.targetValue,
-                              percentChange: 0,
-                              trend: "neutral",
-                              icon: Target
-                            }} 
-                          />
-                          <DataCard 
-                            data={{
-                              title: "Achieved Value",
-                              value: getExecutivePerformance(selectedExecutive)!.achievedValue,
-                              percentChange: getExecutivePerformance(selectedExecutive)!.achievementPercentage - 100,
-                              trend: getExecutivePerformance(selectedExecutive)!.trend,
-                              icon: DollarSign
-                            }} 
-                          />
-                          <DataCard 
-                            data={{
-                              title: "Achievement",
-                              value: `${getExecutivePerformance(selectedExecutive)!.achievementPercentage}%`,
-                              percentChange: getExecutivePerformance(selectedExecutive)!.achievementPercentage - 100,
-                              trend: getExecutivePerformance(selectedExecutive)!.trend,
-                              icon: Award
-                            }} 
-                          />
-                        </div>
-                        
-                        <div className="mt-6">
-                          <Button 
-                            onClick={() => {
-                              form.reset({
-                                salesExecutive: selectedExecutive,
-                                leadTarget: '',
-                                incentiveTarget: ''
-                              });
-                              setIsFormOpen(true);
-                              setActiveView('dashboard');
-                            }}
-                          >
-                            Update {getExecutivePerformance(selectedExecutive)?.name}'s Targets
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="flex items-center justify-center h-full p-12 border rounded-lg border-dashed">
-                  <div className="text-center">
-                    <UserCircle className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-lg font-medium">No Executive Selected</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Select a sales executive from the list to view their performance
-                    </p>
-                  </div>
-                </div>
-              )}
+              <ExecutivePerformanceView 
+                selectedExecutive={selectedExecutive}
+                executivePerformance={executivePerformance}
+                onUpdateTargets={handleUpdateTargets}
+              />
             </div>
           </div>
         </TabsContent>

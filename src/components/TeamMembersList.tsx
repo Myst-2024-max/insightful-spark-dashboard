@@ -40,14 +40,14 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
       }
 
       if (data) {
-        // Transform data to SalesExecutivePerformance format
-        const performanceData = data.map(member => ({
+        // Transform data to SalesExecutivePerformance format with correct typing for trend
+        const performanceData: SalesExecutivePerformance[] = data.map(member => ({
           id: member.id,
           name: member.name,
           targetValue: 100000, // Default target value (we would fetch actual targets in a real app)
           achievedValue: Math.floor(Math.random() * 100000), // Mock data for demo
           achievementPercentage: Math.floor(Math.random() * 100), // Mock data for demo
-          trend: Math.random() > 0.5 ? 'up' : 'down', // Mock data for demo
+          trend: Math.random() > 0.5 ? 'up' : 'down' as 'up' | 'down', // Explicitly typed
           avatar: member.avatar
         }));
         

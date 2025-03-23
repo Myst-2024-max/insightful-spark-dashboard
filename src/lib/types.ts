@@ -64,6 +64,7 @@ export interface SalesExecutivePerformance {
   achievedValue: number;
   achievementPercentage: number;
   trend: 'up' | 'down' | 'neutral';
+  avatar?: string; // Added avatar property
 }
 
 // Team interface
