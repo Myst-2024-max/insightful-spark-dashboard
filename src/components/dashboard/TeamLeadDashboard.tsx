@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Target, DollarSign, TrendingUp, Zap } from 'lucide-react';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
@@ -8,64 +8,65 @@ import { SalesExecutivePerformance } from '@/lib/types';
 import TeamLeadTargetForm from '@/components/dashboard/TeamLeadTargetForm';
 import ExecutivePerformanceView from '@/components/dashboard/ExecutivePerformanceView';
 import ExecutivesList from '@/components/dashboard/ExecutivesList';
+import { useAuth } from '@/components/auth/AuthContext';
+import { fetchTeamPerformance } from '@/utils/teamUtils';
+import { useToast } from '@/hooks/use-toast';
+import TeamMembersList from '@/components/TeamMembersList';
 
 const TeamLeadDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedExecutive, setSelectedExecutive] = useState<string | null>(null);
+  const [salesExecutives, setSalesExecutives] = useState<{ id: string; name: string }[]>([]);
+  const [executivePerformance, setExecutivePerformance] = useState<SalesExecutivePerformance[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
   
-  // Mock data for sales executives under this team lead
-  const salesExecutives = [
-    { id: 'exec1', name: 'John Smith' },
-    { id: 'exec2', name: 'Emily Johnson' },
-    { id: 'exec3', name: 'Michael Brown' },
-    { id: 'exec4', name: 'Sarah Williams' },
-    { id: 'exec5', name: 'David Jones' },
-  ];
+  useEffect(() => {
+    if (user?.id) {
+      fetchTeamData();
+    }
+  }, [user]);
   
-  // Mock performance data for sales executives
-  const executivePerformance: SalesExecutivePerformance[] = [
-    {
-      id: 'exec1',
-      name: 'John Smith',
-      targetValue: 120000,
-      achievedValue: 135000,
-      achievementPercentage: 112.5,
-      trend: 'up',
-    },
-    {
-      id: 'exec2',
-      name: 'Emily Johnson',
-      targetValue: 100000,
-      achievedValue: 92000,
-      achievementPercentage: 92.0,
-      trend: 'down',
-    },
-    {
-      id: 'exec3',
-      name: 'Michael Brown',
-      targetValue: 115000,
-      achievedValue: 118500,
-      achievementPercentage: 103.0,
-      trend: 'up',
-    },
-    {
-      id: 'exec4',
-      name: 'Sarah Williams',
-      targetValue: 90000,
-      achievedValue: 78000,
-      achievementPercentage: 86.7,
-      trend: 'down',
-    },
-    {
-      id: 'exec5',
-      name: 'David Jones',
-      targetValue: 110000,
-      achievedValue: 110000,
-      achievementPercentage: 100.0,
-      trend: 'neutral',
-    },
-  ];
+  const fetchTeamData = async () => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const performanceData = await fetchTeamPerformance(user.id);
+      
+      if (performanceData && performanceData.length > 0) {
+        // Set performance data
+        setExecutivePerformance(performanceData);
+        
+        // Extract basic sales executive info for the list
+        const executives = performanceData.map(exec => ({
+          id: exec.id,
+          name: exec.name
+        }));
+        
+        setSalesExecutives(executives);
+        
+        // If we have executives but none selected, select the first one
+        if (executives.length > 0 && !selectedExecutive) {
+          setSelectedExecutive(executives[0].id);
+        }
+      } else {
+        setSalesExecutives([]);
+        setExecutivePerformance([]);
+      }
+    } catch (error) {
+      console.error("Error fetching team data:", error);
+      toast({
+        title: "Error",
+        description: "Could not load team data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const analyticsData = [
     {
@@ -102,13 +103,14 @@ const TeamLeadDashboard = () => {
     },
   ];
   
-  const targetDiffData = [
-    { name: 'Exec 1', target: 45, achieved: 38 },
-    { name: 'Exec 2', target: 40, achieved: 42 },
-    { name: 'Exec 3', target: 50, achieved: 47 },
-    { name: 'Exec 4', target: 35, achieved: 32 },
-    { name: 'Exec 5', target: 45, achieved: 41 },
-  ];
+  // Create chart data based on real team performance
+  const getTargetDiffData = () => {
+    return executivePerformance.map(exec => ({
+      name: exec.name.split(' ')[0], // Just first name to keep chart readable
+      target: exec.targetValue / 1000, // Convert to thousands for better display
+      achieved: exec.achievedValue / 1000
+    }));
+  };
   
   const cplTrendData = [
     { name: 'Jan', CPL: 920 },
@@ -132,6 +134,7 @@ const TeamLeadDashboard = () => {
     console.log(data);
     setIsFormOpen(false);
     // Here you would normally update the data in your backend
+    fetchTeamData(); // Refresh the data after updating
   };
   
   const handleUpdateTargets = (executiveId: string) => {
@@ -168,16 +171,36 @@ const TeamLeadDashboard = () => {
               onSubmit={handleFormSubmit}
             />
             
-            <ChartCard 
-              title="Target vs Achieved" 
-              subtitle="Lead targets versus achieved by executive"
-              data={targetDiffData}
-              type="bar"
-              dataKey="name"
-              categories={['target', 'achieved']}
-              colors={['#0159FF', '#66A3FF']}
-            />
+            {executivePerformance.length > 0 ? (
+              <ChartCard 
+                title="Target vs Achieved" 
+                subtitle="Lead targets versus achieved by executive"
+                data={getTargetDiffData()}
+                type="bar"
+                dataKey="name"
+                categories={['target', 'achieved']}
+                colors={['#0159FF', '#66A3FF']}
+              />
+            ) : (
+              <div className="border rounded-lg p-6 flex items-center justify-center">
+                <p className="text-gray-500">No executives assigned to your team yet</p>
+              </div>
+            )}
           </div>
+          
+          {/* Real-time team members list */}
+          {user && user.id && (
+            <div className="mt-6">
+              <TeamMembersList 
+                teamLeadId={user.id} 
+                onEditTarget={(memberId, name, currentTarget) => {
+                  // Implementation for editing targets
+                  console.log(`Edit target for ${name}: ${currentTarget}`);
+                  setIsFormOpen(true);
+                }}
+              />
+            </div>
+          )}
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <ChartCard 
@@ -203,23 +226,27 @@ const TeamLeadDashboard = () => {
         </TabsContent>
         
         <TabsContent value="executives" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <ExecutivesList 
-                salesExecutives={salesExecutives}
-                selectedExecutive={selectedExecutive}
-                onSelectExecutive={setSelectedExecutive}
-              />
+          {isLoading ? (
+            <div className="text-center py-4">Loading team members...</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1">
+                <ExecutivesList 
+                  salesExecutives={salesExecutives}
+                  selectedExecutive={selectedExecutive}
+                  onSelectExecutive={setSelectedExecutive}
+                />
+              </div>
+              
+              <div className="lg:col-span-2">
+                <ExecutivePerformanceView 
+                  selectedExecutive={selectedExecutive}
+                  executivePerformance={executivePerformance}
+                  onUpdateTargets={handleUpdateTargets}
+                />
+              </div>
             </div>
-            
-            <div className="lg:col-span-2">
-              <ExecutivePerformanceView 
-                selectedExecutive={selectedExecutive}
-                executivePerformance={executivePerformance}
-                onUpdateTargets={handleUpdateTargets}
-              />
-            </div>
-          </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

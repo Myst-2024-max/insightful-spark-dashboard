@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Target, BarChart4, Users, Briefcase, Database, Zap, UserCircle } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
@@ -7,8 +6,8 @@ import ChartCard from '@/components/dashboard/ChartCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/components/auth/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { fetchSalesExecutiveTeamLead } from '@/utils/teamUtils';
 
 const SalesExecutiveDashboard = () => {
   const [timeFilter, setTimeFilter] = useState('all');
@@ -40,21 +39,10 @@ const SalesExecutiveDashboard = () => {
       setIsLoading(true);
       setLoadingError(null);
       
-      // First, get the updated user data including team_lead_id
-      const { data: userData, error: userError } = await supabase
-        .from('haca_users')
-        .select('team_lead_id')
-        .eq('id', user.id)
-        .single();
+      // Use the utility function to fetch team lead info
+      const teamLeadData = await fetchSalesExecutiveTeamLead(user.id);
 
-      if (userError) {
-        console.error('Error fetching user details:', userError);
-        setLoadingError("Could not fetch user details");
-        setIsLoading(false);
-        return;
-      }
-
-      if (!userData || !userData.team_lead_id) {
+      if (!teamLeadData) {
         setIsLoading(false);
         // No team lead assigned
         toast({
@@ -65,50 +53,22 @@ const SalesExecutiveDashboard = () => {
         return;
       }
 
-      // Now fetch the team lead details
-      await fetchTeamLeadInfo(userData.team_lead_id);
+      setTeamLead({
+        id: teamLeadData.id,
+        name: teamLeadData.name,
+        title: 'Senior Team Lead',
+      });
+      
+      toast({
+        title: "Team Information",
+        description: `You are assigned to ${teamLeadData.name}'s team.`,
+      });
+      
     } catch (error) {
       console.error('Error in fetchUserDetails:', error);
       setLoadingError("An unexpected error occurred");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchTeamLeadInfo = async (teamLeadId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('haca_users')
-        .select('id, name')
-        .eq('id', teamLeadId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching team lead info:', error);
-        setLoadingError("Could not fetch team lead information");
-        toast({
-          title: "Error",
-          description: "Could not fetch team lead information.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data) {
-        setTeamLead({
-          id: data.id,
-          name: data.name,
-          title: 'Senior Team Lead',
-        });
-        
-        toast({
-          title: "Team Information",
-          description: `You are assigned to ${data.name}'s team.`,
-        });
-      }
-    } catch (error) {
-      console.error('Error in fetchTeamLeadInfo:', error);
-      setLoadingError("An unexpected error occurred while fetching team lead info");
     }
   };
 
