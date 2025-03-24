@@ -37,8 +37,8 @@ const MasterAdminDashboard = () => {
             id: index.toString(),
             title: metric.metric_name,
             value: metric.metric_value,
-            percentChange: metric.percent_change,
-            trend: metric.trend,
+            percentChange: metric.percent_change || 0,
+            trend: metric.trend || 'neutral',
             icon: getIconForMetric(metric.metric_name)
           }));
           
@@ -50,8 +50,8 @@ const MasterAdminDashboard = () => {
             id: (index + 5).toString(),
             title: metric.metric_name,
             value: metric.metric_value,
-            percentChange: metric.percent_change,
-            trend: metric.trend,
+            percentChange: metric.percent_change || 0,
+            trend: metric.trend || 'neutral',
             icon: getIconForMetric(metric.metric_name)
           }));
           
@@ -68,16 +68,22 @@ const MasterAdminDashboard = () => {
 
         if (chartsData) {
           chartsData.forEach(chart => {
-            const chartData = typeof chart.chart_data === 'string'
-              ? JSON.parse(chart.chart_data)
-              : chart.chart_data;
+            let chartData = [];
+            try {
+              chartData = typeof chart.chart_data === 'string'
+                ? JSON.parse(chart.chart_data)
+                : chart.chart_data || [];
+            } catch (e) {
+              console.error('Error parsing chart data:', e);
+              chartData = [];
+            }
               
             switch (chart.chart_name) {
               case 'Revenue by School':
-                setRevenueBySchoolData(chartData);
+                setRevenueBySchoolData(Array.isArray(chartData) ? chartData : []);
                 break;
               case 'Admissions Trend':
-                setAdmissionsTrendData(chartData);
+                setAdmissionsTrendData(Array.isArray(chartData) ? chartData : []);
                 break;
               default:
                 break;
@@ -91,6 +97,12 @@ const MasterAdminDashboard = () => {
           description: "Could not load dashboard data. Please try again.",
           variant: "destructive",
         });
+        
+        // Set default empty arrays to prevent rendering issues
+        setAnalyticsData([]);
+        setRevenueBySchoolData([]);
+        setAdmissionsTrendData([]);
+        setKeyMetricsData([]);
       } finally {
         setIsLoading(false);
       }
@@ -131,25 +143,6 @@ const MasterAdminDashboard = () => {
       supabase.removeChannel(channel);
     };
   }, [toast]);
-
-  const getIconForMetric = (metricName) => {
-    switch (metricName) {
-      case 'Total Revenue':
-      case 'ARPPU':
-      case 'CPL':
-        return <DollarSign className="h-5 w-5 text-primary" />;
-      case 'Lead Count':
-        return <Users className="h-5 w-5 text-primary" />;
-      case 'Conversion Ratio':
-        return <BarChart4 className="h-5 w-5 text-primary" />;
-      case 'Spend-Revenue Ratio':
-        return <TrendingUp className="h-5 w-5 text-primary" />;
-      case 'Fresh Admissions':
-        return <Zap className="h-5 w-5 text-primary" />;
-      default:
-        return <DollarSign className="h-5 w-5 text-primary" />;
-    }
-  };
 
   const handleAddNewSchool = async () => {
     // In a real app, this would navigate to a form or open a modal
