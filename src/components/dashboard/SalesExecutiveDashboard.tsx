@@ -17,21 +17,63 @@ const SalesExecutiveDashboard = () => {
     name: '',
     title: 'Team Lead',
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
   // Fetch team lead info when dashboard loads
   useEffect(() => {
-    if (user?.teamLeadId) {
-      fetchTeamLeadInfo(user.teamLeadId);
-    } else {
-      toast({
-        title: "No Team Assigned",
-        description: "You are not currently assigned to a team.",
-        variant: "default",
-      });
+    if (user) {
+      fetchUserDetails();
     }
   }, [user]);
+
+  const fetchUserDetails = async () => {
+    if (!user || !user.id) {
+      setLoadingError("User information not available");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setLoadingError(null);
+      
+      // First, get the updated user data including team_lead_id
+      const { data: userData, error: userError } = await supabase
+        .from('haca_users')
+        .select('team_lead_id')
+        .eq('id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user details:', userError);
+        setLoadingError("Could not fetch user details");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!userData || !userData.team_lead_id) {
+        setIsLoading(false);
+        // No team lead assigned
+        toast({
+          title: "No Team Assigned",
+          description: "You are not currently assigned to a team.",
+          variant: "default",
+        });
+        return;
+      }
+
+      // Now fetch the team lead details
+      await fetchTeamLeadInfo(userData.team_lead_id);
+    } catch (error) {
+      console.error('Error in fetchUserDetails:', error);
+      setLoadingError("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchTeamLeadInfo = async (teamLeadId: string) => {
     try {
@@ -43,6 +85,7 @@ const SalesExecutiveDashboard = () => {
 
       if (error) {
         console.error('Error fetching team lead info:', error);
+        setLoadingError("Could not fetch team lead information");
         toast({
           title: "Error",
           description: "Could not fetch team lead information.",
@@ -65,6 +108,7 @@ const SalesExecutiveDashboard = () => {
       }
     } catch (error) {
       console.error('Error in fetchTeamLeadInfo:', error);
+      setLoadingError("An unexpected error occurred while fetching team lead info");
     }
   };
 
@@ -188,24 +232,46 @@ const SalesExecutiveDashboard = () => {
         </div>
       </div>
       
-      {/* Team Lead Information */}
-      {teamLead.id ? (
+      {/* Display loading state */}
+      {isLoading && (
         <Card className="mb-6">
-          <CardContent className="p-4 flex items-center">
-            <UserCircle className="h-10 w-10 mr-4 text-primary" />
-            <div>
-              <p className="text-sm text-gray-500">Team Lead</p>
-              <p className="font-medium">{teamLead.name}</p>
-              <p className="text-xs text-gray-500">{teamLead.title}</p>
-            </div>
+          <CardContent className="p-4 flex items-center justify-center">
+            <p>Loading team information...</p>
           </CardContent>
         </Card>
-      ) : (
-        <Card className="mb-6 bg-yellow-50">
+      )}
+      
+      {/* Display error state */}
+      {loadingError && (
+        <Card className="mb-6 bg-red-50">
           <CardContent className="p-4">
-            <p className="text-amber-600">You are not currently assigned to any team. Please contact an administrator.</p>
+            <p className="text-red-600">{loadingError}</p>
           </CardContent>
         </Card>
+      )}
+      
+      {/* Team Lead Information */}
+      {!isLoading && !loadingError && (
+        <>
+          {teamLead.id ? (
+            <Card className="mb-6">
+              <CardContent className="p-4 flex items-center">
+                <UserCircle className="h-10 w-10 mr-4 text-primary" />
+                <div>
+                  <p className="text-sm text-gray-500">Team Lead</p>
+                  <p className="font-medium">{teamLead.name}</p>
+                  <p className="text-xs text-gray-500">{teamLead.title}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="mb-6 bg-yellow-50">
+              <CardContent className="p-4">
+                <p className="text-amber-600">You are not currently assigned to any team. Please contact an administrator.</p>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

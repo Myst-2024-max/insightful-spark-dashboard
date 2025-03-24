@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { UserRole, SchoolDepartment } from '@/lib/types';
@@ -22,6 +21,7 @@ interface HacaUser {
   avatar: string | null;
   active: boolean;
   created_at: string;
+  team_lead_id?: string | null;
 }
 
 const UserManagement = () => {
@@ -33,7 +33,6 @@ const UserManagement = () => {
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // If user can't view all departments, force their department as the filter
   useEffect(() => {
     if (!canViewAllDepartments()) {
       const userDept = getCurrentUserDepartment();
@@ -57,7 +56,6 @@ const UserManagement = () => {
         .select('*')
         .order('name');
       
-      // Apply department filter if set (note: RLS policies will also restrict data)
       if (departmentFilter) {
         query = query.eq('department', departmentFilter);
       }
@@ -86,7 +84,12 @@ const UserManagement = () => {
   };
 
   const handleEditUser = (user: HacaUser) => {
-    setEditingUser(user);
+    const userWithTeamLeadId = {
+      ...user,
+      team_lead_id: user.team_lead_id || null
+    };
+    console.log('Editing user with data:', userWithTeamLeadId);
+    setEditingUser(userWithTeamLeadId);
     setShowForm(true);
   };
 
@@ -139,7 +142,6 @@ const UserManagement = () => {
     }
   };
 
-  // Only MASTER_ADMIN can access this page
   if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">

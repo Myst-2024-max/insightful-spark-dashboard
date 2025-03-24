@@ -37,7 +37,7 @@ interface HacaUser {
   avatar: string | null;
   active: boolean;
   created_at: string;
-  team_lead_id?: string;
+  team_lead_id?: string | null;
 }
 
 interface TeamLead {
@@ -148,6 +148,19 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         return;
       }
       
+      // Ensure teamLeadId is null if empty or not needed, otherwise ensure it's a valid UUID
+      let teamLeadIdToUse = null;
+      if (userData.teamLeadId && userData.teamLeadId.trim() !== '') {
+        // Validate the teamLeadId exists in our teamLeads array
+        const validTeamLead = teamLeads.find(lead => lead.id === userData.teamLeadId);
+        if (!validTeamLead) {
+          console.error('Invalid team lead ID:', userData.teamLeadId);
+          toast.error('Selected team lead is invalid');
+          return;
+        }
+        teamLeadIdToUse = userData.teamLeadId;
+      }
+      
       // Convert teamLeadId to team_lead_id for database
       const dbUserData = {
         name: userData.name,
@@ -156,8 +169,10 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         password: userData.password,
         department: userData.department,
         avatar: userData.avatar,
-        team_lead_id: userData.teamLeadId
+        team_lead_id: needsTeamLead ? teamLeadIdToUse : null
       };
+
+      console.log('User data being saved:', dbUserData);
 
       if (isEditing) {
         const { error } = await supabase
@@ -177,7 +192,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
           ...dbUserData,
           active: true,
           // Add created_by field to track who created this user
-          created_by: user?.id
+          created_by: user?.id || null  // Ensure null if user is undefined
         };
         
         const { error } = await supabase

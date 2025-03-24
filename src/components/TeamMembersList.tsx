@@ -17,6 +17,7 @@ interface TeamMembersListProps {
 const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => {
   const [teamMembers, setTeamMembers] = useState<SalesExecutivePerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,7 +28,11 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
 
   const fetchTeamMembers = async () => {
     setIsLoading(true);
+    setError(null);
+    
     try {
+      console.log("Fetching team members for team lead:", teamLeadId);
+      
       // Fetch team members (sales executives) that report to this team lead
       const { data, error } = await supabase
         .from('haca_users')
@@ -36,11 +41,20 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
         .eq('role', UserRole.SALES_EXECUTIVE);
 
       if (error) {
-        throw error;
+        console.error('Error fetching team members:', error);
+        setError('Failed to load team members');
+        toast({
+          title: "Error",
+          description: "Failed to load team members: " + error.message,
+          variant: "destructive",
+        });
+        return;
       }
 
-      if (data) {
-        // Transform data to SalesExecutivePerformance format with correct typing for trend
+      console.log("Team members data:", data);
+
+      if (data && data.length > 0) {
+        // Transform data to SalesExecutivePerformance format
         const performanceData: SalesExecutivePerformance[] = data.map(member => ({
           id: member.id,
           name: member.name,
@@ -52,9 +66,12 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
         }));
         
         setTeamMembers(performanceData);
+      } else {
+        setTeamMembers([]);
       }
-    } catch (error) {
-      console.error('Error fetching team members:', error);
+    } catch (err) {
+      console.error('Unexpected error fetching team members:', err);
+      setError('An unexpected error occurred');
       toast({
         title: "Error",
         description: "Failed to load team members. Please try again.",
@@ -67,6 +84,25 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
 
   if (isLoading) {
     return <div className="text-center py-4">Loading team members...</div>;
+  }
+
+  if (error) {
+    return (
+      <Card className="mt-6 bg-red-50">
+        <CardContent className="pt-6">
+          <div className="text-center py-6 text-red-500">
+            <p>{error}</p>
+            <Button 
+              onClick={fetchTeamMembers}
+              variant="outline" 
+              className="mt-2"
+            >
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (teamMembers.length === 0) {
@@ -94,7 +130,7 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
             <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center space-x-3">
                 <Avatar>
-                  <AvatarImage src={member.avatar} />
+                  <AvatarImage src={member.avatar || undefined} />
                   <AvatarFallback>{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
