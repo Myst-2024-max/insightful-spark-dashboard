@@ -5,9 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pencil, Target, User } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SalesExecutivePerformance, UserRole } from '@/lib/types';
+import { fetchTeamPerformance } from '@/utils/teamUtils';
 
 interface TeamMembersListProps {
   teamLeadId: string;
@@ -33,42 +33,9 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
     try {
       console.log("Fetching team members for team lead:", teamLeadId);
       
-      // Fetch team members (sales executives) that report to this team lead
-      const { data, error } = await supabase
-        .from('haca_users')
-        .select('id, name, avatar')
-        .eq('team_lead_id', teamLeadId)
-        .eq('role', UserRole.SALES_EXECUTIVE);
-
-      if (error) {
-        console.error('Error fetching team members:', error);
-        setError('Failed to load team members');
-        toast({
-          title: "Error",
-          description: "Failed to load team members: " + error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("Team members data:", data);
-
-      if (data && data.length > 0) {
-        // Transform data to SalesExecutivePerformance format
-        const performanceData: SalesExecutivePerformance[] = data.map(member => ({
-          id: member.id,
-          name: member.name,
-          targetValue: 100000, // Default target value (we would fetch actual targets in a real app)
-          achievedValue: Math.floor(Math.random() * 100000), // Mock data for demo
-          achievementPercentage: Math.floor(Math.random() * 100), // Mock data for demo
-          trend: Math.random() > 0.5 ? 'up' : 'down' as 'up' | 'down', // Explicitly typed
-          avatar: member.avatar
-        }));
-        
-        setTeamMembers(performanceData);
-      } else {
-        setTeamMembers([]);
-      }
+      // Use the fetchTeamPerformance utility function
+      const performanceData = await fetchTeamPerformance(teamLeadId);
+      setTeamMembers(performanceData);
     } catch (err) {
       console.error('Unexpected error fetching team members:', err);
       setError('An unexpected error occurred');

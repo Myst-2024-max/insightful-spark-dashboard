@@ -27,9 +27,12 @@ export const assignSalesExecutiveToTeam = async (salesExecutiveId: string, teamL
   try {
     console.log(`Assigning executive ${salesExecutiveId} to team lead: ${teamLeadId}`);
     
+    // Create the update object, and only include team_lead_id
+    const updateData = { team_lead_id: teamLeadId };
+    
     const { error } = await supabase
       .from('haca_users')
-      .update({ team_lead_id: teamLeadId })
+      .update(updateData)
       .eq('id', salesExecutiveId);
       
     if (error) {
@@ -53,7 +56,8 @@ export const fetchTeamPerformance = async (teamLeadId: string): Promise<SalesExe
       .from('haca_users')
       .select('id, name, avatar')
       .eq('team_lead_id', teamLeadId)
-      .eq('role', UserRole.SALES_EXECUTIVE);
+      .eq('role', UserRole.SALES_EXECUTIVE)
+      .eq('active', true);  // Only include active users
 
     if (error) {
       console.error("Error fetching team members:", error);
