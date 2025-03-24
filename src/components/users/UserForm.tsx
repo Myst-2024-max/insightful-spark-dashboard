@@ -113,10 +113,10 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
 
   // Watch for role changes to handle department and teamLead fields
   const selectedRole = form.watch('role');
-  const needsDepartment = selectedRole === UserRole.PROJECT_LEAD;
+  const needsDepartment = selectedRole === UserRole.PROJECT_LEAD || selectedRole === UserRole.TEAM_LEAD;
   const needsTeamLead = selectedRole === UserRole.SALES_EXECUTIVE;
   
-  // Effect to reset department if not a project lead
+  // Effect to reset department if not a project lead or team lead
   useEffect(() => {
     if (!needsDepartment && form.getValues('department')) {
       form.setValue('department', null);
@@ -148,6 +148,12 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         return;
       }
       
+      // Ensure TEAM_LEAD has a department
+      if (userData.role === UserRole.TEAM_LEAD && !userData.department) {
+        toast.error('Team Lead must have a department assigned');
+        return;
+      }
+      
       // Ensure teamLeadId is null if empty or not needed, otherwise ensure it's a valid UUID
       let teamLeadIdToUse = null;
       if (userData.teamLeadId && userData.teamLeadId.trim() !== '') {
@@ -166,11 +172,15 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         name: userData.name,
         email: userData.email,
         role: userData.role,
-        password: userData.password,
         department: userData.department,
         avatar: userData.avatar,
         team_lead_id: needsTeamLead ? teamLeadIdToUse : null
       };
+
+      // Only include password when it's provided
+      if (userData.password) {
+        dbUserData['password'] = userData.password;
+      }
 
       console.log('User data being saved:', dbUserData);
 
@@ -187,13 +197,19 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         }
         toast.success('User updated successfully');
       } else {
-        // Fix: When creating a new user, ensure all required fields are present
+        // When creating a new user, ensure all required fields are present
         const newUser = {
           ...dbUserData,
           active: true,
           // Add created_by field to track who created this user
           created_by: user?.id || null  // Ensure null if user is undefined
         };
+        
+        // Password is required for new users
+        if (!newUser.password) {
+          toast.error('Password is required for new users');
+          return;
+        }
         
         const { error } = await supabase
           .from('haca_users')
@@ -224,7 +240,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         <Alert className="mb-6 bg-blue-50">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Project Leads must be assigned to a specific school department
+            {selectedRole === UserRole.PROJECT_LEAD ? 'Project Leads' : 'Team Leads'} must be assigned to a specific school department
           </AlertDescription>
         </Alert>
       )}
