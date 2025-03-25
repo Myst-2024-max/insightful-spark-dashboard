@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -22,7 +21,9 @@ import {
   Code,
   Palette,
   Megaphone,
-  Landmark
+  Landmark,
+  Building2,
+  BookOpen
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -59,6 +60,18 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
       path: '/users',
       icon: <Users className="h-5 w-5" />,
       roles: [UserRole.MASTER_ADMIN], // Only master admin can manage users
+    },
+    {
+      name: 'Schools',
+      path: '/schools',
+      icon: <Building2 className="h-5 w-5" />,
+      roles: [UserRole.MASTER_ADMIN, UserRole.ACCOUNTS_TEAM], // Only admin and accounts team can manage schools
+    },
+    {
+      name: 'Programs',
+      path: '/programs',
+      icon: <BookOpen className="h-5 w-5" />,
+      roles: [UserRole.MASTER_ADMIN, UserRole.ACCOUNTS_TEAM], // Only admin and accounts team can manage programs
     },
     {
       name: 'Sales',

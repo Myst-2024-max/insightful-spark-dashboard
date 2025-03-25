@@ -17,6 +17,21 @@ export enum SchoolDepartment {
   FINANCE = "FINANCE",
 }
 
+// School/Program interfaces for database schema
+export interface School {
+  id: string;
+  name: string;
+  location?: string;
+  created_at?: string;
+}
+
+export interface Program {
+  id: string;
+  name: string;
+  description?: string;
+  created_at?: string;
+}
+
 // User interface
 export interface User {
   id: string;
@@ -27,6 +42,7 @@ export interface User {
   avatar?: string;
   teamLeadId?: string; // Reference to team lead for sales executives
   teamName?: string; // Added for UI display purposes
+  school_id?: string; // Reference to school
 }
 
 // Authentication state
@@ -73,4 +89,47 @@ export interface Team {
   name: string;
   leadId: string;
   leadName: string;
+}
+
+// School data interfaces
+export interface SalesData {
+  id: string;
+  user_id: string;
+  school_id: string;
+  program_id: string;
+  incentive_target: number;
+  achieved_amount: number;
+  leads_assigned: number;
+  sales_units: number;
+  conversion_ratio?: number;
+  created_at?: string;
+}
+
+export interface GrowthData {
+  id: string;
+  date: string;
+  spend: number;
+  lead_target: number;
+  achieved_leads: number;
+  program_id: string;
+  school_id: string;
+  created_at?: string;
+}
+
+export interface AccountsData {
+  id: string;
+  user_id: string;
+  date: string;
+  customer_name: string;
+  mobile_number?: string;
+  email?: string;
+  course_name: string;
+  tenure?: string;
+  mode_of_learning?: string;
+  batch_name?: string;
+  amount_paid: number;
+  total_sale_value: number;
+  remaining_amount: number;
+  school_id: string;
+  created_at?: string;
 }

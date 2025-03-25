@@ -13,6 +13,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import UserManagement from "@/pages/UserManagement";
+import SchoolManagement from "@/pages/SchoolManagement";
+import ProgramManagement from "@/pages/ProgramManagement";
 import NotFound from "@/pages/NotFound";
 import NotAuthorized from "@/pages/NotAuthorized";
 
@@ -34,6 +36,8 @@ const App = () => (
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/users" element={<UserManagement />} />
+              <Route path="/schools" element={<SchoolManagement />} />
+              <Route path="/programs" element={<ProgramManagement />} />
               <Route path="/sales" element={<NotFound />} />
               <Route path="/accounts" element={<NotFound />} />
               <Route path="/growth" element={<NotFound />} />

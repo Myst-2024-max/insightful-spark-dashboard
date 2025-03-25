@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserRole, SchoolDepartment } from '@/lib/types';
+import { UserRole, SchoolDepartment, School } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ interface HacaUser {
   active: boolean;
   created_at: string;
   team_lead_id?: string | null;
+  school_id?: string | null;
 }
 
 interface TeamLead {
@@ -67,16 +68,19 @@ const formSchema = z.object({
   }).or(z.literal('')),
   avatar: z.string().nullable().optional(),
   teamLeadId: z.string().nullable().optional(),
+  schoolId: z.string().nullable().optional(),
 });
 
 const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) => {
   const isEditing = !!existingUser;
   const { user } = useAuth();
   const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
+  const [schools, setSchools] = useState<School[]>([]);
 
-  // Fetch team leads on component mount
+  // Fetch team leads and schools on component mount
   useEffect(() => {
     fetchTeamLeads();
+    fetchSchools();
   }, []);
 
   const fetchTeamLeads = async () => {
@@ -98,6 +102,24 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
     }
   };
 
+  const fetchSchools = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching schools:', error);
+        return;
+      }
+
+      setSchools(data || []);
+    } catch (error) {
+      console.error('Error in fetchSchools:', error);
+    }
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -108,6 +130,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       password: '',
       avatar: existingUser?.avatar || null,
       teamLeadId: existingUser?.team_lead_id || null,
+      schoolId: existingUser?.school_id || null,
     },
   });
 
@@ -115,8 +138,9 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
   const selectedRole = form.watch('role');
   const needsDepartment = selectedRole === UserRole.PROJECT_LEAD || selectedRole === UserRole.TEAM_LEAD;
   const needsTeamLead = selectedRole === UserRole.SALES_EXECUTIVE;
+  const needsSchool = selectedRole !== UserRole.MASTER_ADMIN;
   
-  // Effect to reset department if not a project lead or team lead
+  // Effect to reset fields when role changes
   useEffect(() => {
     if (!needsDepartment && form.getValues('department')) {
       form.setValue('department', null);
@@ -154,6 +178,12 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         return;
       }
       
+      // Ensure school is selected when required
+      if (needsSchool && !userData.schoolId) {
+        toast.error('Please select a school');
+        return;
+      }
+      
       // Ensure teamLeadId is null if empty or not needed, otherwise ensure it's a valid UUID
       let teamLeadIdToUse = null;
       if (userData.teamLeadId && userData.teamLeadId.trim() !== '') {
@@ -174,7 +204,8 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         role: userData.role,
         department: userData.department,
         avatar: userData.avatar,
-        team_lead_id: needsTeamLead ? teamLeadIdToUse : null
+        team_lead_id: needsTeamLead ? teamLeadIdToUse : null,
+        school_id: needsSchool ? userData.schoolId : null
       };
 
       // Only include password when it's provided
@@ -312,6 +343,42 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
                 </FormItem>
               )}
             />
+            
+            {needsSchool && (
+              <FormField
+                control={form.control}
+                name="schoolId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>School</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value || undefined}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a school" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {schools.length === 0 ? (
+                          <SelectItem value="no-schools" disabled>
+                            No schools available
+                          </SelectItem>
+                        ) : (
+                          schools.map((school) => (
+                            <SelectItem key={school.id} value={school.id}>
+                              {school.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
             {needsDepartment && (
               <FormField
