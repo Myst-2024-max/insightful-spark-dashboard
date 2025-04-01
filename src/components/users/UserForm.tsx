@@ -1,9 +1,8 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserRole, SchoolDepartment, School } from '@/lib/types';
+import { User, UserRole, SchoolDepartment, School } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -23,31 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
-import { useAuth } from '../auth/AuthContext';
-
-interface HacaUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string | null;
-  password?: string;
-  avatar: string | null;
-  active: boolean;
-  created_at: string;
-  team_lead_id?: string | null;
-  school_id?: string | null;
-}
-
-interface TeamLead {
-  id: string;
-  name: string;
-}
+import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface UserFormProps {
-  existingUser: HacaUser | null;
+  existingUser: User | null;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -59,25 +39,39 @@ const formSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  role: z.string({
-    required_error: "Please select a role.",
-  }),
-  department: z.string().nullable().optional(),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }).or(z.literal('')),
-  avatar: z.string().nullable().optional(),
-  teamLeadId: z.string().nullable().optional(),
-  schoolId: z.string().nullable().optional(),
+  password: z.string().optional(),
+  role: z.nativeEnum(UserRole),
+  department: z.nativeEnum(SchoolDepartment).optional(),
+  avatar: z.string().optional(),
+  active: z.boolean().default(true),
+  team_lead_id: z.string().optional(),
+  school_id: z.string().optional(),
 });
 
 const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) => {
+  const { user: currentUser } = useAuth();
   const isEditing = !!existingUser;
-  const { user } = useAuth();
-  const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [teamLeads, setTeamLeads] = useState<User[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
 
-  // Fetch team leads and schools on component mount
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: existingUser?.name || '',
+      email: existingUser?.email || '',
+      password: '',
+      role: existingUser?.role || UserRole.SALES_EXECUTIVE,
+      department: existingUser?.department,
+      avatar: existingUser?.avatar || '',
+      active: existingUser ? true : true,
+      team_lead_id: existingUser?.teamLeadId || '',
+      school_id: existingUser?.school_id || '',
+    },
+  });
+
+  const selectedRole = form.watch('role');
+
   useEffect(() => {
     fetchTeamLeads();
     fetchSchools();
@@ -87,18 +81,14 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
     try {
       const { data, error } = await supabase
         .from('haca_users')
-        .select('id, name')
+        .select('*')
         .eq('role', UserRole.TEAM_LEAD)
-        .eq('active', true);
+        .order('name');
 
-      if (error) {
-        console.error('Error fetching team leads:', error);
-        return;
-      }
-
+      if (error) throw error;
       setTeamLeads(data || []);
-    } catch (error) {
-      console.error('Error in fetchTeamLeads:', error);
+    } catch (err) {
+      console.error('Error fetching team leads:', err);
     }
   };
 
@@ -109,116 +99,40 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         .select('*')
         .order('name');
 
-      if (error) {
-        console.error('Error fetching schools:', error);
-        return;
-      }
-
+      if (error) throw error;
       setSchools(data || []);
-    } catch (error) {
-      console.error('Error in fetchSchools:', error);
+    } catch (err) {
+      console.error('Error fetching schools:', err);
     }
   };
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: existingUser?.name || '',
-      email: existingUser?.email || '',
-      role: existingUser?.role || '',
-      department: existingUser?.department || null,
-      password: '',
-      avatar: existingUser?.avatar || null,
-      teamLeadId: existingUser?.team_lead_id || null,
-      schoolId: existingUser?.school_id || null,
-    },
-  });
-
-  // Watch for role changes to handle department and teamLead fields
-  const selectedRole = form.watch('role');
-  const needsDepartment = selectedRole === UserRole.PROJECT_LEAD || selectedRole === UserRole.TEAM_LEAD;
-  const needsTeamLead = selectedRole === UserRole.SALES_EXECUTIVE;
-  const needsSchool = selectedRole !== UserRole.MASTER_ADMIN;
-  
-  // Effect to reset fields when role changes
-  useEffect(() => {
-    if (!needsDepartment && form.getValues('department')) {
-      form.setValue('department', null);
-    }
-    
-    // Reset teamLeadId if not a sales executive
-    if (!needsTeamLead && form.getValues('teamLeadId')) {
-      form.setValue('teamLeadId', null);
-    }
-  }, [needsDepartment, needsTeamLead, form]);
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const userData = { ...values };
-      
-      // If password is empty and we're editing, remove it from the update
-      if (isEditing && !userData.password) {
-        delete userData.password;
-      }
-      
-      // Generate avatar if not provided
-      if (!userData.avatar) {
-        userData.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0159FF&color=fff`;
+      setSubmitting(true);
+
+      // Basic validation
+      if (!values.email || !values.name || !values.role) {
+        toast.error('Please fill out all required fields');
+        return;
       }
 
-      // Ensure PROJECT_LEAD has a department
-      if (userData.role === UserRole.PROJECT_LEAD && !userData.department) {
-        toast.error('Project Lead must have a department assigned');
-        return;
-      }
-      
-      // Ensure TEAM_LEAD has a department
-      if (userData.role === UserRole.TEAM_LEAD && !userData.department) {
-        toast.error('Team Lead must have a department assigned');
-        return;
-      }
-      
-      // Ensure school is selected when required
-      if (needsSchool && !userData.schoolId) {
-        toast.error('Please select a school');
-        return;
-      }
-      
-      // Ensure teamLeadId is null if empty or not needed, otherwise ensure it's a valid UUID
-      let teamLeadIdToUse = null;
-      if (userData.teamLeadId && userData.teamLeadId.trim() !== '') {
-        // Validate the teamLeadId exists in our teamLeads array
-        const validTeamLead = teamLeads.find(lead => lead.id === userData.teamLeadId);
-        if (!validTeamLead) {
-          console.error('Invalid team lead ID:', userData.teamLeadId);
-          toast.error('Selected team lead is invalid');
-          return;
-        }
-        teamLeadIdToUse = userData.teamLeadId;
-      }
-      
-      // Convert teamLeadId to team_lead_id for database
-      const dbUserData = {
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        department: userData.department,
-        avatar: userData.avatar,
-        team_lead_id: needsTeamLead ? teamLeadIdToUse : null,
-        school_id: needsSchool ? userData.schoolId : null
+      const userData = {
+        active: values.active,
+        created_by: currentUser?.id || '',
+        name: values.name,
+        email: values.email,
+        role: values.role,
+        department: values.department || '',
+        avatar: values.avatar || '',
+        team_lead_id: values.team_lead_id || null,
+        school_id: values.school_id || null,
       };
 
-      // Only include password when it's provided
-      if (userData.password) {
-        dbUserData['password'] = userData.password;
-      }
-
-      console.log('User data being saved:', dbUserData);
-
       if (isEditing) {
+        // When updating, don't send the password
         const { error } = await supabase
           .from('haca_users')
-          .update(dbUserData)
+          .update(userData)
           .eq('id', existingUser.id);
 
         if (error) {
@@ -228,23 +142,19 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         }
         toast.success('User updated successfully');
       } else {
-        // When creating a new user, ensure all required fields are present
-        const newUser = {
-          ...dbUserData,
-          active: true,
-          // Add created_by field to track who created this user
-          created_by: user?.id || null  // Ensure null if user is undefined
-        };
-        
-        // Password is required for new users
-        if (!newUser.password) {
+        // For new users, require a password
+        if (!values.password) {
           toast.error('Password is required for new users');
           return;
         }
-        
+
+        // Include password only when creating new users
         const { error } = await supabase
           .from('haca_users')
-          .insert(newUser);
+          .insert({
+            ...userData,
+            password: values.password,
+          });
 
         if (error) {
           console.error('Error creating user:', error);
@@ -253,11 +163,13 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         }
         toast.success('User created successfully');
       }
-      
+
       onSave();
     } catch (error) {
       console.error('Error saving user:', error);
       toast.error(`Failed to ${isEditing ? 'update' : 'create'} user`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -267,27 +179,10 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         {isEditing ? 'Edit User' : 'Create New User'}
       </h2>
       
-      {needsDepartment && (
-        <Alert className="mb-6 bg-blue-50">
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            {selectedRole === UserRole.PROJECT_LEAD ? 'Project Leads' : 'Team Leads'} must be assigned to a specific school department
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {needsTeamLead && (
-        <Alert className="mb-6 bg-blue-50">
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            Sales Executives must be assigned to a Team Lead
-          </AlertDescription>
-        </Alert>
-      )}
-      
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Information */}
             <FormField
               control={form.control}
               name="name"
@@ -295,7 +190,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Jane Doe" {...field} />
+                    <Input placeholder="John Doe" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -307,23 +202,63 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email Address</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="jane@example.com" {...field} />
+                    <Input placeholder="john.doe@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
+            {!isEditing && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Required for new users only.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            <FormField
+              control={form.control}
+              name="avatar"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Avatar URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com/avatar.jpg" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Role and Department */}
             <FormField
               control={form.control}
               name="role"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
+                  <Select 
+                    onValueChange={field.onChange} 
                     defaultValue={field.value}
                   >
                     <FormControl>
@@ -344,52 +279,16 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
               )}
             />
             
-            {needsSchool && (
-              <FormField
-                control={form.control}
-                name="schoolId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>School</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value || undefined}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a school" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {schools.length === 0 ? (
-                          <SelectItem value="no-schools" disabled>
-                            No schools available
-                          </SelectItem>
-                        ) : (
-                          schools.map((school) => (
-                            <SelectItem key={school.id} value={school.id}>
-                              {school.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            
-            {needsDepartment && (
+            {selectedRole === UserRole.PROJECT_LEAD && (
               <FormField
                 control={form.control}
                 name="department"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Department</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value || undefined}
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -399,7 +298,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
                       <SelectContent>
                         {Object.values(SchoolDepartment).map((dept) => (
                           <SelectItem key={dept} value={dept}>
-                            {dept} School
+                            {dept}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -410,16 +309,16 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
               />
             )}
             
-            {needsTeamLead && (
+            {selectedRole === UserRole.SALES_EXECUTIVE && (
               <FormField
                 control={form.control}
-                name="teamLeadId"
+                name="team_lead_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Team Lead</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value || undefined}
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -427,17 +326,12 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {teamLeads.length === 0 ? (
-                          <SelectItem value="no-leads" disabled>
-                            No team leads available
+                        <SelectItem value="">None</SelectItem>
+                        {teamLeads.map((lead) => (
+                          <SelectItem key={lead.id} value={lead.id}>
+                            {lead.name}
                           </SelectItem>
-                        ) : (
-                          teamLeads.map((lead) => (
-                            <SelectItem key={lead.id} value={lead.id}>
-                              {lead.name}
-                            </SelectItem>
-                          ))
-                        )}
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -448,17 +342,28 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
             
             <FormField
               control={form.control}
-              name="password"
+              name="school_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{isEditing ? 'New Password (leave blank to keep current)' : 'Password'}</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder={isEditing ? "Leave blank to keep current password" : "Enter password"} 
-                      {...field} 
-                    />
-                  </FormControl>
+                  <FormLabel>School (Optional)</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a school" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {schools.map((school) => (
+                        <SelectItem key={school.id} value={school.id}>
+                          {school.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -466,19 +371,21 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
             
             <FormField
               control={form.control}
-              name="avatar"
+              name="active"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Avatar URL (Optional)</FormLabel>
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Active Status</FormLabel>
+                    <FormDescription>
+                      Inactive users cannot log in to the system.
+                    </FormDescription>
+                  </div>
                   <FormControl>
-                    <Input 
-                      placeholder="https://example.com/avatar.jpg" 
-                      {...field} 
-                      value={field.value || ''} 
-                      onChange={(e) => field.onChange(e.target.value || null)}
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -488,8 +395,8 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit">
-              {isEditing ? 'Update User' : 'Create User'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : isEditing ? 'Update User' : 'Create User'}
             </Button>
           </div>
         </form>

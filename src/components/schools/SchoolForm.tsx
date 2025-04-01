@@ -43,7 +43,16 @@ const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCance
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const schoolData = { ...values };
+      // Ensure name is a string with at least some content
+      if (!values.name || values.name.trim() === '') {
+        toast.error('School name is required');
+        return;
+      }
+      
+      const schoolData = { 
+        name: values.name, 
+        location: values.location 
+      };
       
       if (isEditing) {
         const { error } = await supabase
@@ -60,7 +69,10 @@ const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCance
       } else {
         const { error } = await supabase
           .from('schools')
-          .insert(schoolData);
+          .insert({
+            name: values.name,
+            location: values.location || null
+          });
 
         if (error) {
           console.error('Error creating school:', error);

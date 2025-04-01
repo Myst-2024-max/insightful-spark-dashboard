@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Program } from '@/lib/types';
+import { Program, School } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,13 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ProgramFormProps {
   existingProgram: Program | null;
@@ -29,22 +36,58 @@ const formSchema = z.object({
     message: "Name must be at least 2 characters.",
   }),
   description: z.string().optional(),
+  school_id: z.string().optional(),
 });
 
 const ProgramForm: React.FC<ProgramFormProps> = ({ existingProgram, onSave, onCancel }) => {
   const isEditing = !!existingProgram;
+  const [schools, setSchools] = useState<School[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: existingProgram?.name || '',
       description: existingProgram?.description || '',
+      school_id: existingProgram?.school_id || '',
     },
   });
 
+  useEffect(() => {
+    fetchSchools();
+  }, []);
+
+  const fetchSchools = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setSchools(data || []);
+    } catch (err) {
+      console.error('Error fetching schools:', err);
+      toast.error('Failed to load schools');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const programData = { ...values };
+      // Ensure name is a string with at least some content
+      if (!values.name || values.name.trim() === '') {
+        toast.error('Program name is required');
+        return;
+      }
+      
+      const programData = { 
+        name: values.name,
+        description: values.description || null,
+        school_id: values.school_id || null
+      };
       
       if (isEditing) {
         const { error } = await supabase
@@ -86,19 +129,50 @@ const ProgramForm: React.FC<ProgramFormProps> = ({ existingProgram, onSave, onCa
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Program Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Web Development" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Program Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Web Development" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="school_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>School (Optional)</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a school" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {schools.map((school) => (
+                        <SelectItem key={school.id} value={school.id}>
+                          {school.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
           
           <FormField
             control={form.control}

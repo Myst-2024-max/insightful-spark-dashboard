@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { UserRole, Program } from '@/lib/types';
+import { UserRole, Program, School } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -16,6 +16,7 @@ import ProgramForm from '@/components/programs/ProgramForm';
 const ProgramManagement = () => {
   const { checkUserPermission } = useAuth();
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
@@ -23,7 +24,22 @@ const ProgramManagement = () => {
 
   useEffect(() => {
     fetchPrograms();
+    fetchSchools();
   }, []);
+
+  const fetchSchools = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setSchools(data || []);
+    } catch (err) {
+      console.error('Error fetching schools:', err);
+    }
+  };
 
   const fetchPrograms = async () => {
     try {
@@ -32,7 +48,7 @@ const ProgramManagement = () => {
       
       const { data, error } = await supabase
         .from('programs')
-        .select('*')
+        .select('*, schools(name)')
         .order('name');
 
       if (error) {
@@ -138,6 +154,7 @@ const ProgramManagement = () => {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>School</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -145,13 +162,13 @@ const ProgramManagement = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10">
+                  <TableCell colSpan={5} className="text-center py-10">
                     Loading programs...
                   </TableCell>
                 </TableRow>
               ) : programs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10">
+                  <TableCell colSpan={5} className="text-center py-10">
                     No programs found. Add your first program to get started.
                   </TableCell>
                 </TableRow>
@@ -160,6 +177,7 @@ const ProgramManagement = () => {
                   <TableRow key={program.id}>
                     <TableCell className="font-medium">{program.name}</TableCell>
                     <TableCell>{program.description || '-'}</TableCell>
+                    <TableCell>{program.school?.name || '-'}</TableCell>
                     <TableCell>{new Date(program.created_at || '').toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

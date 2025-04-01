@@ -29,6 +29,7 @@ export interface Program {
   id: string;
   name: string;
   description?: string;
+  school_id?: string;  // Added school_id to associate programs with schools
   created_at?: string;
 }
 
