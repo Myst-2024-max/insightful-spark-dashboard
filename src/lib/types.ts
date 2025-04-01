@@ -21,15 +21,15 @@ export enum SchoolDepartment {
 export interface School {
   id: string;
   name: string;
-  location?: string;
+  location?: string | null;
   created_at?: string;
 }
 
 export interface Program {
   id: string;
   name: string;
-  description?: string;
-  school_id?: string;  // Added school_id to associate programs with schools
+  description?: string | null;
+  school_id?: string | null;  // Added school_id to associate programs with schools
   created_at?: string;
 }
 
@@ -39,11 +39,11 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  department?: SchoolDepartment;
-  avatar?: string;
-  teamLeadId?: string; // Reference to team lead for sales executives
-  teamName?: string; // Added for UI display purposes
-  school_id?: string; // Reference to school
+  department?: SchoolDepartment | null;
+  avatar?: string | null;
+  teamLeadId?: string | null; // Reference to team lead for sales executives
+  teamName?: string | null; // Added for UI display purposes
+  school_id?: string | null; // Reference to school
 }
 
 // Authentication state
@@ -81,7 +81,7 @@ export interface SalesExecutivePerformance {
   achievedValue: number;
   achievementPercentage: number;
   trend: 'up' | 'down' | 'neutral';
-  avatar?: string; // Added avatar property
+  avatar?: string | null; // Added avatar property
 }
 
 // Team interface
@@ -102,7 +102,7 @@ export interface SalesData {
   achieved_amount: number;
   leads_assigned: number;
   sales_units: number;
-  conversion_ratio?: number;
+  conversion_ratio?: number | null;
   created_at?: string;
 }
 
@@ -122,12 +122,12 @@ export interface AccountsData {
   user_id: string;
   date: string;
   customer_name: string;
-  mobile_number?: string;
-  email?: string;
+  mobile_number?: string | null;
+  email?: string | null;
   course_name: string;
-  tenure?: string;
-  mode_of_learning?: string;
-  batch_name?: string;
+  tenure?: string | null;
+  mode_of_learning?: string | null;
+  batch_name?: string | null;
   amount_paid: number;
   total_sale_value: number;
   remaining_amount: number;

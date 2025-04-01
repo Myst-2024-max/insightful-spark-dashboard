@@ -30,10 +30,12 @@ const formSchema = z.object({
   location: z.string().optional(),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCancel }) => {
   const isEditing = !!existingSchool;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: existingSchool?.name || '',
@@ -41,7 +43,7 @@ const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCance
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       // Ensure name is a string with at least some content
       if (!values.name || values.name.trim() === '') {
@@ -51,10 +53,10 @@ const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCance
       
       const schoolData = { 
         name: values.name, 
-        location: values.location 
+        location: values.location || null 
       };
       
-      if (isEditing) {
+      if (isEditing && existingSchool) {
         const { error } = await supabase
           .from('schools')
           .update(schoolData)
@@ -69,10 +71,7 @@ const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCance
       } else {
         const { error } = await supabase
           .from('schools')
-          .insert({
-            name: values.name,
-            location: values.location || null
-          });
+          .insert(schoolData);
 
         if (error) {
           console.error('Error creating school:', error);
@@ -83,7 +82,7 @@ const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCance
       }
       
       onSave();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving school:', error);
       toast.error(`Failed to ${isEditing ? 'update' : 'create'} school`);
     }
@@ -119,7 +118,7 @@ const SchoolForm: React.FC<SchoolFormProps> = ({ existingSchool, onSave, onCance
                 <FormItem>
                   <FormLabel>Location (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="New York, NY" {...field} />
+                    <Input placeholder="New York, NY" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
