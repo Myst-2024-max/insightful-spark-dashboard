@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Target, BarChart4, Users, Briefcase, Database, Zap, UserCircle } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
@@ -147,7 +148,7 @@ const SalesExecutiveDashboard = () => {
   ];
   
   // Custom rendering function for pie chart labels
-  const renderCustomizedLabel = (props) => {
+  const renderCustomizedLabel = (props: any) => {
     const { cx, cy, midAngle, innerRadius, outerRadius, percent, index } = props;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.7;
     const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
@@ -163,7 +164,7 @@ const SalesExecutiveDashboard = () => {
         fontSize={13}
         fontWeight="bold"
       >
-        {incentiveData[index].percentage}
+        {incentiveData[index]?.percentage || ''}
       </text>
     );
   };
