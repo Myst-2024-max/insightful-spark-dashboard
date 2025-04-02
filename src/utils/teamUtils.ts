@@ -70,12 +70,10 @@ export const assignSalesExecutiveToTeam = async (salesExecutiveId: string, teamL
   try {
     console.log(`Assigning executive ${salesExecutiveId} to team lead: ${teamLeadId}`);
     
-    // Create the update object, and only include team_lead_id
-    const updateData = { team_lead_id: teamLeadId };
-    
+    // Create the update object with team_lead_id
     const { error } = await supabase
       .from('haca_users')
-      .update(updateData)
+      .update({ team_lead_id: teamLeadId })
       .eq('id', salesExecutiveId);
       
     if (error) {
@@ -94,11 +92,10 @@ export const assignTeamLeadToProjectLead = async (teamLeadId: string, projectLea
   try {
     console.log(`Assigning team lead ${teamLeadId} to project lead: ${projectLeadId}`);
     
-    const updateData = { project_lead_id: projectLeadId };
-    
+    // Update with project_lead_id
     const { error } = await supabase
       .from('haca_users')
-      .update(updateData)
+      .update({ project_lead_id: projectLeadId })
       .eq('id', teamLeadId);
       
     if (error) {
@@ -229,14 +226,18 @@ export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
       
     if (userError) {
       console.error("Error fetching user's project lead ID:", userError);
-      throw userError;
+      // Return default values to prevent undefined errors
+      return {
+        projectLead: null,
+        department: null
+      };
     }
     
-    if (!userData?.project_lead_id) {
+    if (!userData || !userData.project_lead_id) {
       console.log("No project lead assigned to this team lead");
       return {
         projectLead: null,
-        department: userData?.department
+        department: userData?.department || null
       };
     }
     
@@ -249,12 +250,15 @@ export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
       
     if (projectLeadError) {
       console.error("Error fetching project lead details:", projectLeadError);
-      throw projectLeadError;
+      return {
+        projectLead: null,
+        department: userData?.department || null
+      };
     }
     
     return {
       projectLead: projectLeadData,
-      department: userData?.department
+      department: userData?.department || null
     };
   } catch (error) {
     console.error('Error in fetchTeamLeadProjectLead:', error);

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pencil, Target, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { SalesExecutivePerformance, UserRole } from '@/lib/types';
+import { SalesExecutivePerformance } from '@/lib/types';
 import { fetchTeamPerformance } from '@/utils/teamUtils';
 
 interface TeamMembersListProps {
@@ -14,7 +14,7 @@ interface TeamMembersListProps {
   onEditTarget?: (memberId: string, name: string, currentTarget: number) => void;
 }
 
-const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => {
+const TeamMembersList: React.FC<TeamMembersListProps> = ({ teamLeadId, onEditTarget }) => {
   const [teamMembers, setTeamMembers] = useState<SalesExecutivePerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
     );
   }
 
-  if (teamMembers.length === 0) {
+  if (!teamMembers || teamMembers.length === 0) {
     return (
       <Card className="mt-6">
         <CardContent className="pt-6">
@@ -98,20 +98,20 @@ const TeamMembersList = ({ teamLeadId, onEditTarget }: TeamMembersListProps) => 
               <div className="flex items-center space-x-3">
                 <Avatar>
                   <AvatarImage src={member.avatar || undefined} />
-                  <AvatarFallback>{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>{member.name ? member.name.substring(0, 2).toUpperCase() : 'XX'}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-medium">{member.name}</h3>
+                  <h3 className="font-medium">{member.name || 'Unknown Member'}</h3>
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <span>Target: ₹{member.targetValue.toLocaleString()}</span>
+                    <span>Target: ₹{member.targetValue?.toLocaleString() || '0'}</span>
                     <span>•</span>
-                    <span>Achieved: ₹{member.achievedValue.toLocaleString()}</span>
+                    <span>Achieved: ₹{member.achievedValue?.toLocaleString() || '0'}</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <Badge variant={member.trend === 'up' ? "default" : "destructive"}>
-                  {member.achievementPercentage}%
+                  {member.achievementPercentage?.toString() || '0'}%
                 </Badge>
                 {onEditTarget && (
                   <Button 
