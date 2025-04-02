@@ -2,18 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { UserRole, SchoolDepartment } from '@/lib/types';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ProjectLeadDashboard from '@/components/dashboard/ProjectLeadDashboard';
 import TeamMembersList from '@/components/TeamMembersList';
-import { supabase } from '@/integrations/supabase/client';
 import { fetchTeamLeads } from '@/utils/teamUtils';
 
 const ProjectLeadPage = () => {
   const { user, checkUserPermission } = useAuth();
   const { toast } = useToast();
+  const { department } = useParams<{ department: string }>();
   const [teamLeads, setTeamLeads] = useState<{ id: string, name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

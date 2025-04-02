@@ -12,17 +12,17 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getIconForMetric } from '@/utils/dashboardUtils';
+import { AnalyticsData } from '@/lib/types';
 
 const ProjectLeadDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [analyticsData, setAnalyticsData] = useState([]);
-  const [secondMetrics, setSecondMetrics] = useState([]);
-  const [targetAchievedData, setTargetAchievedData] = useState([]);
-  const [monthlyPerformanceData, setMonthlyPerformanceData] = useState([]);
-  const [conversionByChannelData, setConversionByChannelData] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
+  const [secondMetrics, setSecondMetrics] = useState<AnalyticsData[]>([]);
+  const [targetAchievedData, setTargetAchievedData] = useState<any[]>([]);
+  const [monthlyPerformanceData, setMonthlyPerformanceData] = useState<any[]>([]);
+  const [conversionByChannelData, setConversionByChannelData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm({
@@ -56,7 +56,7 @@ const ProjectLeadDashboard = () => {
             title: metric.metric_name,
             value: metric.metric_value,
             percentChange: metric.percent_change,
-            trend: metric.trend,
+            trend: metric.trend as 'up' | 'down' | 'neutral',
             icon: getIconForMetric(metric.metric_name)
           }));
           
@@ -69,7 +69,7 @@ const ProjectLeadDashboard = () => {
             title: metric.metric_name,
             value: metric.metric_value,
             percentChange: metric.percent_change,
-            trend: metric.trend,
+            trend: metric.trend as 'up' | 'down' | 'neutral',
             icon: getIconForMetric(metric.metric_name)
           }));
           
@@ -112,6 +112,12 @@ const ProjectLeadDashboard = () => {
           description: "Could not load dashboard data. Please try again.",
           variant: "destructive",
         });
+        // Initialize with empty data to prevent rendering errors
+        setAnalyticsData([]);
+        setSecondMetrics([]);
+        setTargetAchievedData([]);
+        setMonthlyPerformanceData([]);
+        setConversionByChannelData([]);
       } finally {
         setIsLoading(false);
       }
@@ -155,7 +161,7 @@ const ProjectLeadDashboard = () => {
     };
   }, [user?.department, toast]);
 
-  const getIconForMetric = (metricName) => {
+  const getIconForMetric = (metricName: string) => {
     switch (metricName) {
       case 'Total Leads Needed':
         return <Users className="h-5 w-5 text-primary" />;
@@ -174,7 +180,7 @@ const ProjectLeadDashboard = () => {
     }
   };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data: { monthlyTarget: string, paidUserTarget: string, leadCount: string }) => {
     try {
       // Update targets in Supabase
       const updatedTargets = {
