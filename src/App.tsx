@@ -15,6 +15,7 @@ import Dashboard from "@/pages/Dashboard";
 import UserManagement from "@/pages/UserManagement";
 import SchoolManagement from "@/pages/SchoolManagement";
 import ProgramManagement from "@/pages/ProgramManagement";
+import ProjectLeadPage from "@/pages/ProjectLeadPage";
 import NotFound from "@/pages/NotFound";
 import NotAuthorized from "@/pages/NotAuthorized";
 
@@ -42,7 +43,7 @@ const App = () => (
               <Route path="/accounts" element={<NotFound />} />
               <Route path="/growth" element={<NotFound />} />
               <Route path="/teams" element={<NotFound />} />
-              <Route path="/projects/:department" element={<NotFound />} />
+              <Route path="/projects/:department" element={<ProjectLeadPage />} />
             </Route>
             
             {/* Common routes */}

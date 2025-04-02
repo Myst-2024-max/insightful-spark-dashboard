@@ -8,7 +8,7 @@ import AccountsTeamDashboard from '@/components/dashboard/AccountsTeamDashboard'
 import GrowthTeamDashboard from '@/components/dashboard/GrowthTeamDashboard';
 import TeamLeadDashboard from '@/components/dashboard/TeamLeadDashboard';
 import ProjectLeadDashboard from '@/components/dashboard/ProjectLeadDashboard';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import SimulateUpdatesButton from '@/components/dashboard/SimulateUpdatesButton';
 
@@ -16,6 +16,11 @@ const Dashboard = () => {
   const { user } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
+  
+  // Redirect project leads to their specific department page
+  if (user?.role === UserRole.PROJECT_LEAD && user?.department) {
+    return <Navigate to={`/projects/${user.department.toLowerCase()}`} replace />;
+  }
   
   // Extract department from URL if present
   useEffect(() => {

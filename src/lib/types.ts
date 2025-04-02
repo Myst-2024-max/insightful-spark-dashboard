@@ -1,4 +1,3 @@
-
 // User roles for the HACA Academy dashboard
 export enum UserRole {
   MASTER_ADMIN = "MASTER_ADMIN",
