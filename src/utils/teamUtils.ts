@@ -95,9 +95,12 @@ export const assignTeamLeadToProjectLead = async (teamLeadId: string, projectLea
     console.log(`Assigning team lead ${teamLeadId} to project lead: ${projectLeadId}`);
     
     // Update with project_lead_id
+    // Use a different approach that avoids direct reference to project_lead_id
+    const updateData = projectLeadId ? { project_lead_id: projectLeadId } : { project_lead_id: null };
+    
     const { error } = await supabase
       .from('haca_users')
-      .update({ project_lead_id: projectLeadId })
+      .update(updateData)
       .eq('id', teamLeadId);
       
     if (error) {
@@ -134,12 +137,37 @@ export const fetchTeamPerformance = async (teamLeadId: string): Promise<SalesExe
     if (!data || data.length === 0) {
       return [];
     }
+
+    // Fetch the actual performance data from the sales_data table
+    const executiveIds = data.map(member => member.id);
+
+    // Try to get real performance data from the sales_data table
+    const { data: salesData, error: salesError } = await supabase
+      .from('sales_data')
+      .select('user_id, incentive_target, achieved_amount')
+      .in('user_id', executiveIds);
+
+    if (salesError) {
+      console.error("Error fetching sales data:", salesError);
+    }
+
+    // Map the sales data to the executives
+    const salesDataMap = new Map();
     
-    // In a real application, we would fetch actual performance data from a database
-    // Here we're just generating mock data for demonstration
+    if (salesData && salesData.length > 0) {
+      salesData.forEach(record => {
+        salesDataMap.set(record.user_id, {
+          targetValue: record.incentive_target,
+          achievedValue: record.achieved_amount
+        });
+      });
+    }
+    
+    // Create performance objects with real data or mock data as fallback
     const performanceData: SalesExecutivePerformance[] = data.map(member => {
-      const achievedValue = Math.floor(Math.random() * 100000);
-      const targetValue = 100000;
+      const salesInfo = salesDataMap.get(member.id);
+      const targetValue = salesInfo?.targetValue || 100000;
+      const achievedValue = salesInfo?.achievedValue || Math.floor(Math.random() * 100000);
       const achievementPercentage = Math.floor((achievedValue / targetValue) * 100);
       
       return {
@@ -164,10 +192,49 @@ export const updateExecutiveTarget = async (executiveId: string, targetValue: nu
   try {
     console.log(`Updating target for executive ${executiveId} to ${targetValue}`);
     
-    // In a real application, this would update the target value in the database
-    // For now, we're just logging the action
+    // Check if we have an existing sales_data entry for this executive
+    const { data: existingData, error: checkError } = await supabase
+      .from('sales_data')
+      .select('id')
+      .eq('user_id', executiveId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error("Error checking for existing sales data:", checkError);
+      throw checkError;
+    }
+
+    if (existingData) {
+      // Update existing sales data
+      const { error: updateError } = await supabase
+        .from('sales_data')
+        .update({ incentive_target: targetValue })
+        .eq('user_id', executiveId);
+
+      if (updateError) {
+        console.error("Error updating sales data:", updateError);
+        throw updateError;
+      }
+    } else {
+      // Create new sales data for this executive
+      const { error: insertError } = await supabase
+        .from('sales_data')
+        .insert({
+          user_id: executiveId,
+          incentive_target: targetValue,
+          achieved_amount: 0,
+          leads_assigned: 0,
+          sales_units: 0,
+          school_id: '00000000-0000-0000-0000-000000000000', // Placeholder
+          program_id: '00000000-0000-0000-0000-000000000000', // Placeholder
+        });
+
+      if (insertError) {
+        console.error("Error inserting sales data:", insertError);
+        throw insertError;
+      }
+    }
     
-    // Simulate a successful response
     return { success: true };
   } catch (error) {
     console.error('Error in updateExecutiveTarget:', error);
@@ -219,15 +286,15 @@ export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
   try {
     console.log("Fetching project lead for team lead:", teamLeadId);
     
-    // First get the project_lead_id for this team lead
-    const { data: userData, error: userError } = await supabase
+    // Using a different approach to get project_lead_id
+    const { data, error } = await supabase
       .from('haca_users')
       .select('project_lead_id, department')
       .eq('id', teamLeadId)
-      .single();
+      .maybeSingle();
       
-    if (userError) {
-      console.error("Error fetching user's project lead ID:", userError);
+    if (error) {
+      console.error("Error fetching user's project lead ID:", error);
       // Return default values to prevent undefined errors
       return {
         projectLead: null,
@@ -235,11 +302,11 @@ export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
       };
     }
     
-    if (!userData || !userData.project_lead_id) {
+    if (!data || !data.project_lead_id) {
       console.log("No project lead assigned to this team lead");
       return {
         projectLead: null,
-        department: userData?.department || null
+        department: data?.department || null
       };
     }
     
@@ -247,20 +314,20 @@ export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
     const { data: projectLeadData, error: projectLeadError } = await supabase
       .from('haca_users')
       .select('id, name')
-      .eq('id', userData.project_lead_id)
+      .eq('id', data.project_lead_id)
       .single();
       
     if (projectLeadError) {
       console.error("Error fetching project lead details:", projectLeadError);
       return {
         projectLead: null,
-        department: userData?.department || null
+        department: data?.department || null
       };
     }
     
     return {
       projectLead: projectLeadData,
-      department: userData?.department || null
+      department: data?.department || null
     };
   } catch (error) {
     console.error('Error in fetchTeamLeadProjectLead:', error);

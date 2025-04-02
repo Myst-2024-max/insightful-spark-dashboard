@@ -8,6 +8,7 @@ import { Pencil, Target, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SalesExecutivePerformance } from '@/lib/types';
 import { fetchTeamPerformance } from '@/utils/teamUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TeamMembersListProps {
   teamLeadId: string;
@@ -23,6 +24,41 @@ const TeamMembersList: React.FC<TeamMembersListProps> = ({ teamLeadId, onEditTar
   useEffect(() => {
     if (teamLeadId) {
       fetchTeamMembers();
+      
+      // Set up real-time subscription to listen for changes in sales executives data
+      const channel = supabase
+        .channel('sales-exec-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'haca_users',
+            filter: `team_lead_id=eq.${teamLeadId}`
+          },
+          (payload) => {
+            console.log('Team member changes detected:', payload);
+            fetchTeamMembers();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'sales_data'
+          },
+          (payload) => {
+            console.log('Sales data changes detected:', payload);
+            fetchTeamMembers();
+          }
+        )
+        .subscribe();
+      
+      // Cleanup function
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [teamLeadId]);
 

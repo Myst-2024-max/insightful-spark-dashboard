@@ -1,3 +1,4 @@
+
 // User roles for the HACA Academy dashboard
 export enum UserRole {
   MASTER_ADMIN = "MASTER_ADMIN",
@@ -98,7 +99,7 @@ export interface AnalyticsData {
   value: number | string;
   percentChange: number;
   trend: 'up' | 'down' | 'neutral';
-  icon?: LucideIcon;
+  icon: LucideIcon;  // Changed from optional to required
 }
 
 // Chart data interface

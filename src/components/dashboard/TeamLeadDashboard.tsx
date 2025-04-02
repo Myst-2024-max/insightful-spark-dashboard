@@ -9,9 +9,10 @@ import TeamLeadTargetForm from '@/components/dashboard/TeamLeadTargetForm';
 import ExecutivePerformanceView from '@/components/dashboard/ExecutivePerformanceView';
 import ExecutivesList from '@/components/dashboard/ExecutivesList';
 import { useAuth } from '@/components/auth/AuthContext';
-import { fetchTeamPerformance } from '@/utils/teamUtils';
+import { fetchTeamPerformance, updateExecutiveTarget } from '@/utils/teamUtils';
 import { useToast } from '@/hooks/use-toast';
 import TeamMembersList from '@/components/TeamMembersList';
+import { supabase } from '@/integrations/supabase/client';
 
 const TeamLeadDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -26,6 +27,40 @@ const TeamLeadDashboard = () => {
   useEffect(() => {
     if (user?.id) {
       fetchTeamData();
+      
+      // Set up real-time subscriptions for team data changes
+      const channel = supabase
+        .channel('team-lead-dashboard')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'haca_users',
+            filter: `team_lead_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Team member changes detected:', payload);
+            fetchTeamData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'sales_data'
+          },
+          (payload) => {
+            console.log('Sales data changes detected:', payload);
+            fetchTeamData();
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
   
@@ -130,11 +165,39 @@ const TeamLeadDashboard = () => {
     { name: 'Jun', ratio: 35 },
   ];
 
-  const handleFormSubmit = (data: any) => {
-    console.log(data);
-    setIsFormOpen(false);
-    // Here you would normally update the data in your backend
-    fetchTeamData(); // Refresh the data after updating
+  const handleFormSubmit = async (data: any) => {
+    console.log("Form data submitted:", data);
+    
+    try {
+      // Update the executive's target
+      if (data.salesExecutive && data.leadTarget) {
+        const targetValue = parseInt(data.incentiveTarget) || 100000;
+        
+        // Update the target in the database
+        const result = await updateExecutiveTarget(data.salesExecutive, targetValue);
+        
+        if (result.success) {
+          toast({
+            title: "Target Updated",
+            description: "Sales executive target has been updated successfully.",
+          });
+          
+          // Refresh data to show updated targets
+          fetchTeamData();
+        } else {
+          throw new Error("Failed to update target");
+        }
+      }
+      
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error("Error updating target:", error);
+      toast({
+        title: "Update Failed",
+        description: "Could not update the sales executive target.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleUpdateTargets = (executiveId: string) => {
