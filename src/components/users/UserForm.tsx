@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -45,6 +46,7 @@ const formSchema = z.object({
   avatar: z.string().optional(),
   active: z.boolean().default(true),
   team_lead_id: z.string().optional(),
+  project_lead_id: z.string().optional(),
   school_id: z.string().optional(),
 });
 
@@ -55,7 +57,11 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
   const isEditing = !!existingUser;
   const [submitting, setSubmitting] = useState(false);
   const [teamLeads, setTeamLeads] = useState<User[]>([]);
+  const [projectLeads, setProjectLeads] = useState<User[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<SchoolDepartment | null>(
+    existingUser?.department || null
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -68,16 +74,35 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       avatar: existingUser?.avatar || '',
       active: existingUser ? !!existingUser.active : true,
       team_lead_id: existingUser?.teamLeadId || '',
+      project_lead_id: existingUser?.projectLeadId || '',
       school_id: existingUser?.school_id || '',
     },
   });
 
   const selectedRole = form.watch('role');
-
+  const selectedTeamLead = form.watch('team_lead_id');
+  
   useEffect(() => {
-    fetchTeamLeads();
     fetchSchools();
-  }, []);
+    
+    if (selectedRole === UserRole.SALES_EXECUTIVE) {
+      fetchTeamLeads();
+    }
+    
+    if (selectedRole === UserRole.TEAM_LEAD && selectedDepartment) {
+      fetchProjectLeadsByDepartment(selectedDepartment);
+    }
+  }, [selectedRole, selectedDepartment]);
+
+  // Watch for department changes
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'department') {
+        setSelectedDepartment(value.department as SchoolDepartment || null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch]);
 
   const fetchTeamLeads = async () => {
     try {
@@ -85,6 +110,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         .from('haca_users')
         .select('*')
         .eq('role', UserRole.TEAM_LEAD)
+        .eq('active', true)
         .order('name');
 
       if (error) throw error;
@@ -92,6 +118,24 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       setTeamLeads((data || []).map(hacaUserToUser));
     } catch (err) {
       console.error('Error fetching team leads:', err);
+    }
+  };
+
+  const fetchProjectLeadsByDepartment = async (department: SchoolDepartment) => {
+    try {
+      const { data, error } = await supabase
+        .from('haca_users')
+        .select('*')
+        .eq('role', UserRole.PROJECT_LEAD)
+        .eq('department', department)
+        .eq('active', true)
+        .order('name');
+
+      if (error) throw error;
+      
+      setProjectLeads((data || []).map(hacaUserToUser));
+    } catch (err) {
+      console.error('Error fetching project leads:', err);
     }
   };
 
@@ -128,6 +172,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         department: values.department || null,
         avatar: values.avatar || null,
         team_lead_id: values.team_lead_id || null,
+        project_lead_id: values.project_lead_id || null,
         school_id: values.school_id || null,
       };
 
@@ -282,7 +327,8 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
               )}
             />
             
-            {selectedRole === UserRole.PROJECT_LEAD && (
+            {(selectedRole === UserRole.PROJECT_LEAD || 
+              selectedRole === UserRole.TEAM_LEAD) && (
               <FormField
                 control={form.control}
                 name="department"
@@ -312,13 +358,44 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
               />
             )}
             
+            {selectedRole === UserRole.TEAM_LEAD && selectedDepartment && (
+              <FormField
+                control={form.control}
+                name="project_lead_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reports to Project Lead</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a project lead" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {projectLeads.map((lead) => (
+                          <SelectItem key={lead.id} value={lead.id}>
+                            {lead.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
             {selectedRole === UserRole.SALES_EXECUTIVE && (
               <FormField
                 control={form.control}
                 name="team_lead_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Team Lead</FormLabel>
+                    <FormLabel>Reports to Team Lead</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
                       defaultValue={field.value}

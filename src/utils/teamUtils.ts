@@ -23,6 +23,49 @@ export const fetchTeamLeads = async () => {
   }
 };
 
+export const fetchProjectLeads = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('haca_users')
+      .select('id, name, department')
+      .eq('role', UserRole.PROJECT_LEAD)
+      .eq('active', true);
+      
+    if (error) {
+      console.error("Error fetching project leads:", error);
+      throw error;
+    }
+    
+    console.log("Fetched project leads:", data);
+    return data || [];
+  } catch (error) {
+    console.error('Error in fetchProjectLeads:', error);
+    return [];
+  }
+};
+
+export const fetchTeamLeadsByDepartment = async (department: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('haca_users')
+      .select('id, name')
+      .eq('role', UserRole.TEAM_LEAD)
+      .eq('department', department)
+      .eq('active', true);
+      
+    if (error) {
+      console.error("Error fetching team leads for department:", error);
+      throw error;
+    }
+    
+    console.log(`Fetched team leads for ${department}:`, data);
+    return data || [];
+  } catch (error) {
+    console.error('Error in fetchTeamLeadsByDepartment:', error);
+    return [];
+  }
+};
+
 export const assignSalesExecutiveToTeam = async (salesExecutiveId: string, teamLeadId: string | null) => {
   try {
     console.log(`Assigning executive ${salesExecutiveId} to team lead: ${teamLeadId}`);
@@ -43,6 +86,29 @@ export const assignSalesExecutiveToTeam = async (salesExecutiveId: string, teamL
     return { success: true };
   } catch (error) {
     console.error('Error in assignSalesExecutiveToTeam:', error);
+    return { success: false, error };
+  }
+};
+
+export const assignTeamLeadToProjectLead = async (teamLeadId: string, projectLeadId: string | null) => {
+  try {
+    console.log(`Assigning team lead ${teamLeadId} to project lead: ${projectLeadId}`);
+    
+    const updateData = { project_lead_id: projectLeadId };
+    
+    const { error } = await supabase
+      .from('haca_users')
+      .update(updateData)
+      .eq('id', teamLeadId);
+      
+    if (error) {
+      console.error("Error assigning team lead to project lead:", error);
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in assignTeamLeadToProjectLead:', error);
     return { success: false, error };
   }
 };
@@ -146,6 +212,85 @@ export const fetchSalesExecutiveTeamLead = async (executiveId: string) => {
     return teamLeadData;
   } catch (error) {
     console.error('Error in fetchSalesExecutiveTeamLead:', error);
+    return null;
+  }
+};
+
+export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
+  try {
+    console.log("Fetching project lead for team lead:", teamLeadId);
+    
+    // First get the project_lead_id for this team lead
+    const { data: userData, error: userError } = await supabase
+      .from('haca_users')
+      .select('project_lead_id, department')
+      .eq('id', teamLeadId)
+      .single();
+      
+    if (userError) {
+      console.error("Error fetching user's project lead ID:", userError);
+      throw userError;
+    }
+    
+    if (!userData?.project_lead_id) {
+      console.log("No project lead assigned to this team lead");
+      return {
+        projectLead: null,
+        department: userData?.department
+      };
+    }
+    
+    // Now fetch the project lead details
+    const { data: projectLeadData, error: projectLeadError } = await supabase
+      .from('haca_users')
+      .select('id, name')
+      .eq('id', userData.project_lead_id)
+      .single();
+      
+    if (projectLeadError) {
+      console.error("Error fetching project lead details:", projectLeadError);
+      throw projectLeadError;
+    }
+    
+    return {
+      projectLead: projectLeadData,
+      department: userData?.department
+    };
+  } catch (error) {
+    console.error('Error in fetchTeamLeadProjectLead:', error);
+    return {
+      projectLead: null,
+      department: null
+    };
+  }
+};
+
+export const fetchDepartmentProjectLead = async (department: string) => {
+  try {
+    console.log(`Fetching project lead for department: ${department}`);
+    
+    const { data, error } = await supabase
+      .from('haca_users')
+      .select('id, name')
+      .eq('role', UserRole.PROJECT_LEAD)
+      .eq('department', department)
+      .eq('active', true)
+      .single();
+      
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        console.log(`No project lead found for ${department} department`);
+        return null;
+      }
+      
+      console.error("Error fetching department project lead:", error);
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in fetchDepartmentProjectLead:', error);
     return null;
   }
 };

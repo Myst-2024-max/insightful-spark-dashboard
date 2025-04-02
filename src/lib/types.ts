@@ -43,6 +43,7 @@ export interface User {
   department?: SchoolDepartment | null;
   avatar?: string | null;
   teamLeadId?: string | null; // Reference to team lead for sales executives
+  projectLeadId?: string | null; // Reference to project lead for team leads
   teamName?: string | null; // Added for UI display purposes
   school_id?: string | null; // Reference to school
   active?: boolean;
@@ -57,6 +58,7 @@ export interface HacaUser {
   department?: string | null;
   avatar?: string | null;
   team_lead_id?: string | null;
+  project_lead_id?: string | null;
   school_id?: string | null;
   active: boolean;
   created_at: string;
@@ -74,6 +76,7 @@ export function hacaUserToUser(hacaUser: HacaUser): User {
     department: hacaUser.department as SchoolDepartment | null,
     avatar: hacaUser.avatar,
     teamLeadId: hacaUser.team_lead_id,
+    projectLeadId: hacaUser.project_lead_id,
     school_id: hacaUser.school_id,
     active: hacaUser.active
   };
