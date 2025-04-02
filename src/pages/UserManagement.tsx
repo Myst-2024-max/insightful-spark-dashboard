@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { UserRole, SchoolDepartment } from '@/lib/types';
+import { UserRole, SchoolDepartment, hacaUserToUser, User } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -29,7 +29,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState<HacaUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<HacaUser | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,12 +84,9 @@ const UserManagement = () => {
   };
 
   const handleEditUser = (user: HacaUser) => {
-    const userWithTeamLeadId = {
-      ...user,
-      team_lead_id: user.team_lead_id || null
-    };
-    console.log('Editing user with data:', userWithTeamLeadId);
-    setEditingUser(userWithTeamLeadId);
+    const convertedUser = hacaUserToUser(user);
+    console.log('Editing user with data:', convertedUser);
+    setEditingUser(convertedUser);
     setShowForm(true);
   };
 
