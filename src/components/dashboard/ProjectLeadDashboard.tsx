@@ -13,6 +13,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AnalyticsData } from '@/lib/types';
+import { getIconForMetric } from '@/utils/dashboardUtils';
 
 interface ProjectLeadDashboardProps {
   department?: string;
@@ -76,8 +77,8 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
             id: index.toString(),
             title: metric.metric_name,
             value: metric.metric_value,
-            percentChange: metric.percent_change,
-            trend: metric.trend as 'up' | 'down' | 'neutral',
+            percentChange: metric.percent_change || 0,
+            trend: (metric.trend as 'up' | 'down' | 'neutral') || 'neutral',
             icon: getIconForMetric(metric.metric_name)
           }));
           
@@ -89,8 +90,8 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
             id: (index + 5).toString(),
             title: metric.metric_name,
             value: metric.metric_value,
-            percentChange: metric.percent_change,
-            trend: metric.trend as 'up' | 'down' | 'neutral',
+            percentChange: metric.percent_change || 0,
+            trend: (metric.trend as 'up' | 'down' | 'neutral') || 'neutral',
             icon: getIconForMetric(metric.metric_name)
           }));
           
@@ -161,7 +162,7 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
     if (activeDepartment) {
       fetchMetrics();
 
-      // Set up real-time subscriptions
+      // Set up real-time subscription to listen for changes in dashboard metrics
       const channel = supabase
         .channel('dashboard-changes')
         .on(
@@ -191,31 +192,12 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
           }
         )
         .subscribe();
-
+      
       return () => {
         supabase.removeChannel(channel);
       };
     }
   }, [activeDepartment, toast]);
-
-  const getIconForMetric = (metricName: string) => {
-    switch (metricName) {
-      case 'Total Leads Needed':
-        return Users;
-      case 'Conversion Ratio':
-        return BarChart4;
-      case 'Spend-Revenue Ratio':
-        return TrendingUp;
-      case 'Fresh Admissions':
-        return Zap;
-      case 'Second EMI':
-      case 'ARPPU':
-      case 'CPL':
-        return DollarSign;
-      default:
-        return Target;
-    }
-  };
 
   const onSubmit = async (data: { monthlyTarget: string, paidUserTarget: string, leadCount: string }) => {
     if (!activeDepartment) return;

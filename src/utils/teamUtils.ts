@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, SalesExecutivePerformance } from '@/lib/types';
 
@@ -95,7 +94,6 @@ export const assignTeamLeadToProjectLead = async (teamLeadId: string, projectLea
     console.log(`Assigning team lead ${teamLeadId} to project lead: ${projectLeadId}`);
     
     // Update with project_lead_id
-    // Use a different approach that avoids direct reference to project_lead_id
     const updateData = projectLeadId ? { project_lead_id: projectLeadId } : { project_lead_id: null };
     
     const { error } = await supabase
@@ -286,10 +284,10 @@ export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
   try {
     console.log("Fetching project lead for team lead:", teamLeadId);
     
-    // Using a different approach to get project_lead_id
+    // Using a different approach to avoid type errors
     const { data, error } = await supabase
       .from('haca_users')
-      .select('project_lead_id, department')
+      .select('*')  // Select all columns to ensure we get what we need
       .eq('id', teamLeadId)
       .maybeSingle();
       
