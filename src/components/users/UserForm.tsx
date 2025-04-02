@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { User, UserRole, SchoolDepartment, School } from '@/lib/types';
+import { User, UserRole, SchoolDepartment, School, HacaUser, hacaUserToUser } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ const formSchema = z.object({
   school_id: z.string().optional(),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) => {
   const { user: currentUser } = useAuth();
   const isEditing = !!existingUser;
@@ -55,7 +57,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
   const [teamLeads, setTeamLeads] = useState<User[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: existingUser?.name || '',
@@ -64,7 +66,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       role: existingUser?.role || UserRole.SALES_EXECUTIVE,
       department: existingUser?.department,
       avatar: existingUser?.avatar || '',
-      active: existingUser ? true : true,
+      active: existingUser ? !!existingUser.active : true,
       team_lead_id: existingUser?.teamLeadId || '',
       school_id: existingUser?.school_id || '',
     },
@@ -86,7 +88,8 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         .order('name');
 
       if (error) throw error;
-      setTeamLeads(data || []);
+      
+      setTeamLeads((data || []).map(hacaUserToUser));
     } catch (err) {
       console.error('Error fetching team leads:', err);
     }
@@ -106,7 +109,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       setSubmitting(true);
 
@@ -122,13 +125,13 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
         name: values.name,
         email: values.email,
         role: values.role,
-        department: values.department || '',
-        avatar: values.avatar || '',
+        department: values.department || null,
+        avatar: values.avatar || null,
         team_lead_id: values.team_lead_id || null,
         school_id: values.school_id || null,
       };
 
-      if (isEditing) {
+      if (isEditing && existingUser) {
         // When updating, don't send the password
         const { error } = await supabase
           .from('haca_users')
@@ -165,7 +168,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
       }
 
       onSave();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving user:', error);
       toast.error(`Failed to ${isEditing ? 'update' : 'create'} user`);
     } finally {
@@ -241,7 +244,7 @@ const UserForm: React.FC<UserFormProps> = ({ existingUser, onSave, onCancel }) =
                 <FormItem>
                   <FormLabel>Avatar URL (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://example.com/avatar.jpg" {...field} />
+                    <Input placeholder="https://example.com/avatar.jpg" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

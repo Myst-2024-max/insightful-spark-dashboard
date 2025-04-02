@@ -39,12 +39,14 @@ const formSchema = z.object({
   school_id: z.string().optional(),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 const ProgramForm: React.FC<ProgramFormProps> = ({ existingProgram, onSave, onCancel }) => {
   const isEditing = !!existingProgram;
   const [schools, setSchools] = useState<School[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: existingProgram?.name || '',
@@ -75,7 +77,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({ existingProgram, onSave, onCa
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       // Ensure name is a string with at least some content
       if (!values.name || values.name.trim() === '') {
@@ -89,7 +91,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({ existingProgram, onSave, onCa
         school_id: values.school_id || null
       };
       
-      if (isEditing) {
+      if (isEditing && existingProgram) {
         const { error } = await supabase
           .from('programs')
           .update(programData)
@@ -115,7 +117,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({ existingProgram, onSave, onCa
       }
       
       onSave();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving program:', error);
       toast.error(`Failed to ${isEditing ? 'update' : 'create'} program`);
     }
@@ -185,6 +187,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({ existingProgram, onSave, onCa
                     placeholder="A comprehensive program covering frontend and backend development..." 
                     className="min-h-32"
                     {...field} 
+                    value={field.value || ''} 
                   />
                 </FormControl>
                 <FormMessage />

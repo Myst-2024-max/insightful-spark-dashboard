@@ -31,6 +31,7 @@ export interface Program {
   description?: string | null;
   school_id?: string | null;  // Added school_id to associate programs with schools
   created_at?: string;
+  school?: School | null; // For joined queries that include school data
 }
 
 // User interface
@@ -44,6 +45,38 @@ export interface User {
   teamLeadId?: string | null; // Reference to team lead for sales executives
   teamName?: string | null; // Added for UI display purposes
   school_id?: string | null; // Reference to school
+  active?: boolean;
+}
+
+// Database user interface - represents the actual structure from Supabase
+export interface HacaUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string; // This comes as string from the database
+  department?: string | null;
+  avatar?: string | null;
+  team_lead_id?: string | null;
+  school_id?: string | null;
+  active: boolean;
+  created_at: string;
+  created_by?: string | null;
+  password?: string; // Only used when creating new users
+}
+
+// Converter functions
+export function hacaUserToUser(hacaUser: HacaUser): User {
+  return {
+    id: hacaUser.id,
+    name: hacaUser.name,
+    email: hacaUser.email,
+    role: hacaUser.role as UserRole,
+    department: hacaUser.department as SchoolDepartment | null,
+    avatar: hacaUser.avatar,
+    teamLeadId: hacaUser.team_lead_id,
+    school_id: hacaUser.school_id,
+    active: hacaUser.active
+  };
 }
 
 // Authentication state
