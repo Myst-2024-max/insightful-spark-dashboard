@@ -197,6 +197,7 @@ export type Database = {
           id: string
           name: string
           password: string
+          project_lead_id: string | null
           role: string
           school_id: string | null
           team_lead_id: string | null
@@ -211,6 +212,7 @@ export type Database = {
           id?: string
           name: string
           password: string
+          project_lead_id?: string | null
           role: string
           school_id?: string | null
           team_lead_id?: string | null
@@ -225,6 +227,7 @@ export type Database = {
           id?: string
           name?: string
           password?: string
+          project_lead_id?: string | null
           role?: string
           school_id?: string | null
           team_lead_id?: string | null

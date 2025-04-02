@@ -46,6 +46,8 @@ export const fetchProjectLeads = async () => {
 
 export const fetchTeamLeadsByDepartment = async (department: string) => {
   try {
+    console.log(`Fetching team leads for department: ${department}`);
+    
     const { data, error } = await supabase
       .from('haca_users')
       .select('id, name')
@@ -54,7 +56,7 @@ export const fetchTeamLeadsByDepartment = async (department: string) => {
       .eq('active', true);
       
     if (error) {
-      console.error("Error fetching team leads for department:", error);
+      console.error(`Error fetching team leads for department ${department}:`, error);
       throw error;
     }
     

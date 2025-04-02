@@ -14,7 +14,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AnalyticsData } from '@/lib/types';
 
-const ProjectLeadDashboard = () => {
+interface ProjectLeadDashboardProps {
+  department?: string;
+}
+
+const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -24,6 +28,16 @@ const ProjectLeadDashboard = () => {
   const [monthlyPerformanceData, setMonthlyPerformanceData] = useState<any[]>([]);
   const [conversionByChannelData, setConversionByChannelData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeDepartment, setActiveDepartment] = useState<string | undefined>(undefined);
+
+  // Use either the prop department or user department
+  useEffect(() => {
+    if (department) {
+      setActiveDepartment(department);
+    } else if (user?.department) {
+      setActiveDepartment(user.department);
+    }
+  }, [department, user?.department]);
 
   const form = useForm({
     defaultValues: {
@@ -35,20 +49,27 @@ const ProjectLeadDashboard = () => {
 
   useEffect(() => {
     const fetchMetrics = async () => {
-      setIsLoading(true);
-      if (!user?.department) return;
+      if (!activeDepartment) return;
 
+      setIsLoading(true);
       try {
+        console.log(`Fetching metrics for department: ${activeDepartment}`);
+        
         // Fetch analytics data
         const { data: metricsData, error: metricsError } = await supabase
           .from('dashboard_metrics')
           .select('*')
-          .eq('department', user.department);
+          .eq('department', activeDepartment);
 
-        if (metricsError) throw metricsError;
+        if (metricsError) {
+          console.error("Error fetching metrics:", metricsError);
+          throw metricsError;
+        }
+
+        console.log("Fetched metrics data:", metricsData);
 
         // Map metrics to the format needed for DataCard
-        if (metricsData) {
+        if (metricsData && metricsData.length > 0) {
           const analytics = metricsData.filter(metric => 
             ['Total Leads Needed', 'Conversion Ratio', 'Spend-Revenue Ratio', 'Fresh Admissions'].includes(metric.metric_name)
           ).map((metric, index) => ({
@@ -74,17 +95,26 @@ const ProjectLeadDashboard = () => {
           }));
           
           setSecondMetrics(secondary);
+        } else {
+          console.log(`No metrics data found for department: ${activeDepartment}`);
+          setAnalyticsData([]);
+          setSecondMetrics([]);
         }
 
         // Fetch chart data
         const { data: chartsData, error: chartsError } = await supabase
           .from('dashboard_charts')
           .select('*')
-          .eq('department', user.department);
+          .eq('department', activeDepartment);
 
-        if (chartsError) throw chartsError;
+        if (chartsError) {
+          console.error("Error fetching charts:", chartsError);
+          throw chartsError;
+        }
 
-        if (chartsData) {
+        console.log("Fetched charts data:", chartsData);
+
+        if (chartsData && chartsData.length > 0) {
           chartsData.forEach(chart => {
             const chartData = typeof chart.chart_data === 'string'
               ? JSON.parse(chart.chart_data)
@@ -104,6 +134,11 @@ const ProjectLeadDashboard = () => {
                 break;
             }
           });
+        } else {
+          console.log(`No charts data found for department: ${activeDepartment}`);
+          setTargetAchievedData([]);
+          setMonthlyPerformanceData([]);
+          setConversionByChannelData([]);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -123,64 +158,68 @@ const ProjectLeadDashboard = () => {
       }
     };
 
-    fetchMetrics();
+    if (activeDepartment) {
+      fetchMetrics();
 
-    // Set up real-time subscriptions
-    const channel = supabase
-      .channel('dashboard-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'dashboard_metrics',
-          filter: `department=eq.${user?.department}`
-        },
-        (payload) => {
-          console.log('Metrics changed:', payload);
-          fetchMetrics();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'dashboard_charts',
-          filter: `department=eq.${user?.department}`
-        },
-        (payload) => {
-          console.log('Charts changed:', payload);
-          fetchMetrics();
-        }
-      )
-      .subscribe();
+      // Set up real-time subscriptions
+      const channel = supabase
+        .channel('dashboard-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'dashboard_metrics',
+            filter: `department=eq.${activeDepartment}`
+          },
+          (payload) => {
+            console.log('Metrics changed:', payload);
+            fetchMetrics();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'dashboard_charts',
+            filter: `department=eq.${activeDepartment}`
+          },
+          (payload) => {
+            console.log('Charts changed:', payload);
+            fetchMetrics();
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.department, toast]);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [activeDepartment, toast]);
 
   const getIconForMetric = (metricName: string) => {
     switch (metricName) {
       case 'Total Leads Needed':
-        return <Users className="h-5 w-5 text-primary" />;
+        return Users;
       case 'Conversion Ratio':
-        return <BarChart4 className="h-5 w-5 text-primary" />;
+        return BarChart4;
       case 'Spend-Revenue Ratio':
-        return <TrendingUp className="h-5 w-5 text-primary" />;
+        return TrendingUp;
       case 'Fresh Admissions':
-        return <Zap className="h-5 w-5 text-primary" />;
+        return Zap;
       case 'Second EMI':
       case 'ARPPU':
       case 'CPL':
-        return <DollarSign className="h-5 w-5 text-primary" />;
+        return DollarSign;
       default:
-        return <Target className="h-5 w-5 text-primary" />;
+        return Target;
     }
   };
 
   const onSubmit = async (data: { monthlyTarget: string, paidUserTarget: string, leadCount: string }) => {
+    if (!activeDepartment) return;
+    
     try {
       // Update targets in Supabase
       const updatedTargets = {
@@ -193,7 +232,7 @@ const ProjectLeadDashboard = () => {
       const { error } = await supabase
         .from('dashboard_metrics')
         .update({ metric_value: updatedTargets.leadCount })
-        .eq('department', user?.department)
+        .eq('department', activeDepartment)
         .eq('metric_name', 'Total Leads Needed');
 
       if (error) throw error;
@@ -221,15 +260,21 @@ const ProjectLeadDashboard = () => {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {analyticsData.map(data => (
-          <DataCard key={data.id} data={data} />
-        ))}
+        {analyticsData.length > 0 ? (
+          analyticsData.map(data => (
+            <DataCard key={data.id} data={data} />
+          ))
+        ) : (
+          <div className="col-span-4 text-center py-6 bg-gray-50 border rounded-md">
+            <p className="text-gray-500">No analytics data available for {activeDepartment} department.</p>
+          </div>
+        )}
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="p-6 lg:col-span-1">
           <CardHeader className="px-0 pt-0">
-            <CardTitle>Set Targets for {user?.department} School</CardTitle>
+            <CardTitle>Set Targets for {activeDepartment} School</CardTitle>
           </CardHeader>
           <CardContent className="px-0 pb-0">
             {!isFormOpen ? (
@@ -286,45 +331,77 @@ const ProjectLeadDashboard = () => {
         </Card>
         
         <div className="lg:col-span-2">
-          <ChartCard 
-            title="Monthly Performance" 
-            subtitle="Monthly target versus achieved"
-            data={monthlyPerformanceData}
-            type="bar"
-            dataKey="name"
-            categories={['target', 'achieved']}
-            colors={['#0159FF', '#66A3FF']}
-          />
+          {monthlyPerformanceData.length > 0 ? (
+            <ChartCard 
+              title="Monthly Performance" 
+              subtitle="Monthly target versus achieved"
+              data={monthlyPerformanceData}
+              type="bar"
+              dataKey="name"
+              categories={['target', 'achieved']}
+              colors={['#0159FF', '#66A3FF']}
+            />
+          ) : (
+            <Card className="h-full flex items-center justify-center">
+              <CardContent>
+                <p className="text-gray-500">No monthly performance data available.</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="space-y-6 lg:col-span-1">
-          {secondMetrics.map(data => (
-            <DataCard key={data.id} data={data} />
-          ))}
+          {secondMetrics.length > 0 ? (
+            secondMetrics.map(data => (
+              <DataCard key={data.id} data={data} />
+            ))
+          ) : (
+            <Card className="p-6">
+              <p className="text-gray-500 text-center">No secondary metrics available.</p>
+            </Card>
+          )}
         </div>
         
-        <ChartCard 
-          title="Target Achievement" 
-          subtitle="Overall target achievement percentage"
-          data={targetAchievedData}
-          type="pie"
-          dataKey="value"
-          colors={['#0159FF', '#E6EFFF']}
-          className="lg:col-span-1"
-        />
+        <div className="lg:col-span-1">
+          {targetAchievedData.length > 0 ? (
+            <ChartCard 
+              title="Target Achievement" 
+              subtitle="Overall target achievement percentage"
+              data={targetAchievedData}
+              type="pie"
+              dataKey="value"
+              colors={['#0159FF', '#E6EFFF']}
+            />
+          ) : (
+            <Card className="h-full flex items-center justify-center">
+              <CardContent>
+                <p className="text-gray-500">No target achievement data available.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
         
-        <ChartCard 
-          title="Conversion by Channel" 
-          subtitle="Conversion rate by marketing channel"
-          data={conversionByChannelData}
-          type="bar"
-          dataKey="name"
-          categories={['rate']}
-          colors={['#0159FF']}
-          className="lg:col-span-1"
-        />
+        <div className="lg:col-span-1">
+          {conversionByChannelData.length > 0 ? (
+            <ChartCard 
+              title="Conversion by Channel" 
+              subtitle="Conversion rate by marketing channel"
+              data={conversionByChannelData}
+              type="bar"
+              dataKey="name"
+              categories={['rate']}
+              colors={['#0159FF']}
+            />
+          ) : (
+            <Card className="h-full flex items-center justify-center">
+              <CardContent>
+                <p className="text-gray-500">No channel conversion data available.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
