@@ -34,11 +34,7 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     to: new Date()  // Today
   });
-  
-  // Set to track processed metrics to avoid duplicates
-  const [processedMetricNames] = useState(new Set<string>());
 
-  // Use either the prop department or user department
   useEffect(() => {
     if (department) {
       setActiveDepartment(department);
@@ -60,16 +56,13 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
       if (!activeDepartment) return;
 
       setIsLoading(true);
-      processedMetricNames.clear(); // Reset the processed metrics set when fetching new data
       
       try {
         console.log(`Fetching metrics for department: ${activeDepartment}`);
         
-        // Format dates for API query
         const fromDate = dateRange.from.toISOString().split('T')[0];
         const toDate = dateRange.to.toISOString().split('T')[0];
         
-        // Fetch analytics data
         const { data: metricsData, error: metricsError } = await supabase
           .from('dashboard_metrics')
           .select('*')
@@ -82,27 +75,22 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
 
         console.log("Fetched metrics data:", metricsData);
 
-        // Clear previously processed metrics
-        processedMetricNames.clear();
+        const metricsMap = new Map();
 
         if (metricsData && metricsData.length > 0) {
-          // Define the preferred order for primary metrics
-          const mainMetricsOrder = ['ARPPU', 'Total Leads Needed', 'Conversion Ratio', 'Spend-Revenue Ratio', 'Fresh Admissions'];
+          const mainMetricsOrder = ['ARPPU', 'Spend-Revenue Ratio', 'Fresh Admissions', 'Total Leads Needed', 'Conversion Ratio'];
           const secondaryMetricsNames = ['Second EMI', 'CPL'];
           
-          // Ensure we only include unique metrics by checking against processedMetricNames set
-          const primaryMetrics = metricsData
-            .filter(metric => {
-              // Only include metrics that are in our primary list and haven't been processed yet
-              return mainMetricsOrder.includes(metric.metric_name) && !processedMetricNames.has(metric.metric_name);
-            })
+          metricsData.forEach(metric => {
+            metricsMap.set(metric.metric_name, metric);
+          });
+
+          const primaryMetrics = Array.from(metricsMap.values())
+            .filter(metric => mainMetricsOrder.includes(metric.metric_name))
             .sort((a, b) => {
-              // Sort according to our preferred order
               return mainMetricsOrder.indexOf(a.metric_name) - mainMetricsOrder.indexOf(b.metric_name);
             })
             .map((metric, index) => {
-              // Mark this metric as processed
-              processedMetricNames.add(metric.metric_name);
               return {
                 id: index.toString(),
                 title: metric.metric_name,
@@ -115,16 +103,11 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
           
           setAnalyticsData(primaryMetrics);
 
-          const secondary = metricsData
-            .filter(metric => {
-              // Only include metrics that are in our secondary list and haven't been processed yet
-              return secondaryMetricsNames.includes(metric.metric_name) && !processedMetricNames.has(metric.metric_name);
-            })
+          const secondary = Array.from(metricsMap.values())
+            .filter(metric => secondaryMetricsNames.includes(metric.metric_name))
             .map((metric, index) => {
-              // Mark this metric as processed
-              processedMetricNames.add(metric.metric_name);
               return {
-                id: (index + 5).toString(),
+                id: (index + primaryMetrics.length).toString(),
                 title: metric.metric_name,
                 value: metric.metric_value,
                 percentChange: metric.percent_change || 0,
@@ -140,7 +123,6 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
           setSecondMetrics([]);
         }
 
-        // Fetch chart data
         const { data: chartsData, error: chartsError } = await supabase
           .from('dashboard_charts')
           .select('*')
@@ -186,7 +168,6 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
           description: "Could not load dashboard data. Please try again.",
           variant: "destructive",
         });
-        // Initialize with empty data to prevent rendering errors
         setAnalyticsData([]);
         setSecondMetrics([]);
         setTargetAchievedData([]);
@@ -200,7 +181,6 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
     if (activeDepartment) {
       fetchMetrics();
 
-      // Set up real-time subscription to listen for changes in dashboard metrics
       const channel = supabase
         .channel('dashboard-changes')
         .on(
@@ -241,14 +221,12 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
     if (!activeDepartment) return;
     
     try {
-      // Update targets in Supabase
       const updatedTargets = {
         monthlyTarget: parseFloat(data.monthlyTarget),
         paidUserTarget: parseInt(data.paidUserTarget),
         leadCount: parseInt(data.leadCount)
       };
       
-      // Save to Supabase (in a real app, you'd save to a specific targets table)
       const { error } = await supabase
         .from('dashboard_metrics')
         .update({ metric_value: updatedTargets.leadCount })

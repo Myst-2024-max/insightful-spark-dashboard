@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole, SalesExecutivePerformance } from '@/lib/types';
 
@@ -93,8 +94,16 @@ export const assignTeamLeadToProjectLead = async (teamLeadId: string, projectLea
   try {
     console.log(`Assigning team lead ${teamLeadId} to project lead: ${projectLeadId}`);
     
-    // Update with project_lead_id
-    const updateData = projectLeadId ? { project_lead_id: projectLeadId } : { project_lead_id: null };
+    // When assigning a team lead to a project lead, we update the project_lead_id field
+    const updateData: Record<string, any> = {};
+    
+    // Only set project_lead_id if it has a value
+    if (projectLeadId) {
+      updateData.project_lead_id = projectLeadId;
+    } else {
+      // If null is passed, we want to remove the association
+      updateData.project_lead_id = null;
+    }
     
     const { error } = await supabase
       .from('haca_users')
@@ -284,16 +293,15 @@ export const fetchTeamLeadProjectLead = async (teamLeadId: string) => {
   try {
     console.log("Fetching project lead for team lead:", teamLeadId);
     
-    // Using a different approach to avoid type errors
+    // First fetch the user data to get project_lead_id
     const { data, error } = await supabase
       .from('haca_users')
-      .select('*')  // Select all columns to ensure we get what we need
+      .select('project_lead_id, department')
       .eq('id', teamLeadId)
       .maybeSingle();
-      
+    
     if (error) {
       console.error("Error fetching user's project lead ID:", error);
-      // Return default values to prevent undefined errors
       return {
         projectLead: null,
         department: null

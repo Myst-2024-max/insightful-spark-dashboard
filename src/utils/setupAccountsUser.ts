@@ -66,6 +66,39 @@ export const setupGrowthUser = async (department: SchoolDepartment, email: strin
       return { success: true, message: "Growth user already exists" };
     }
     
+    // Get or create a school for this department
+    let schoolId;
+    const { data: schoolData, error: schoolError } = await supabase
+      .from('schools')
+      .select('id')
+      .eq('name', `${department} School`)
+      .maybeSingle();
+      
+    if (schoolError) {
+      console.error(`Error fetching school for ${department}:`, schoolError);
+    }
+    
+    if (schoolData) {
+      schoolId = schoolData.id;
+    } else {
+      // Create a school for this department if it doesn't exist
+      const { data: newSchool, error: createSchoolError } = await supabase
+        .from('schools')
+        .insert({
+          name: `${department} School`,
+          location: 'Virtual'
+        })
+        .select('id')
+        .single();
+        
+      if (createSchoolError) {
+        console.error(`Error creating school for ${department}:`, createSchoolError);
+        throw createSchoolError;
+      }
+      
+      schoolId = newSchool.id;
+    }
+    
     // Create the growth team user
     const { error: createError } = await supabase
       .from('haca_users')
@@ -75,6 +108,7 @@ export const setupGrowthUser = async (department: SchoolDepartment, email: strin
         password, // In a real app, this would be hashed
         role: UserRole.GROWTH_TEAM,
         department,
+        school_id: schoolId,
         active: true
       });
     
