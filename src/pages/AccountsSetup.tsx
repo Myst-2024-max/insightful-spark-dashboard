@@ -1,145 +1,233 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { createAccountsUser } from '@/utils/setupAccountsUser';
 import { useAuth } from '@/components/auth/AuthContext';
-import { UserRole } from '@/lib/types';
-import { Navigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { createAccountsUser, createGrowthUser } from '@/utils/setupAccountsUser';
+import { SchoolDepartment, UserRole } from '@/lib/types';
+import { toast } from 'sonner';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AccountsSetup = () => {
-  const { toast } = useToast();
   const { user, checkUserPermission } = useAuth();
-  const [isCreating, setIsCreating] = useState(false);
-  const [accountsUsers, setAccountsUsers] = useState<{id: string, name: string, email: string}[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsSuccess, setAccountsSuccess] = useState(false);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
   
-  useEffect(() => {
-    const fetchAccountsUsers = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('haca_users')
-          .select('id, name, email')
-          .eq('role', UserRole.ACCOUNTS_TEAM)
-          .eq('active', true);
-        
-        if (error) throw error;
-        setAccountsUsers(data || []);
-      } catch (error) {
-        console.error('Error fetching accounts users:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch accounts team users',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchAccountsUsers();
-  }, [toast]);
-  
-  // Only allow master admin to access this page
-  if (!user || !checkUserPermission(UserRole.MASTER_ADMIN)) {
-    return <Navigate to="/unauthorized" replace />;
-  }
+  const [growthLoading, setGrowthLoading] = useState(false);
+  const [growthSuccess, setGrowthSuccess] = useState(false);
+  const [growthError, setGrowthError] = useState<string | null>(null);
+  const [department, setDepartment] = useState<SchoolDepartment | "">("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
 
-  const handleCreateAccountsUser = async () => {
-    setIsCreating(true);
+  const handleSetupAccounts = async () => {
+    if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
+      toast.error('Only master admin can perform this action');
+      return;
+    }
+
     try {
+      setAccountsLoading(true);
+      setAccountsError(null);
+      setAccountsSuccess(false);
+      
       const result = await createAccountsUser();
       
       if (result.success) {
-        toast({
-          title: 'Success',
-          description: 'Accounts team user created successfully',
-        });
-        
-        // Refresh the list
-        const { data } = await supabase
-          .from('haca_users')
-          .select('id, name, email')
-          .eq('role', UserRole.ACCOUNTS_TEAM)
-          .eq('active', true);
-        
-        setAccountsUsers(data || []);
+        setAccountsSuccess(true);
+        toast.success(result.message);
       } else {
-        toast({
-          title: 'Error',
-          description: result.message || 'Failed to create accounts team user',
-          variant: 'destructive'
-        });
+        setAccountsError(result.message);
+        toast.error(result.message);
       }
-    } catch (error) {
-      console.error('Error creating accounts user:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create accounts team user',
-        variant: 'destructive'
-      });
+    } catch (error: any) {
+      console.error('Error setting up accounts user:', error);
+      setAccountsError(error.message || 'An unexpected error occurred');
+      toast.error('Failed to set up accounts user');
     } finally {
-      setIsCreating(false);
+      setAccountsLoading(false);
+    }
+  };
+  
+  const handleSetupGrowthUser = async () => {
+    if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
+      toast.error('Only master admin can perform this action');
+      return;
+    }
+    
+    if (!department) {
+      toast.error('Please select a department');
+      return;
+    }
+    
+    if (!email) {
+      toast.error('Please enter an email');
+      return;
+    }
+    
+    if (!password || password.length < 6) {
+      toast.error('Please enter a password with at least 6 characters');
+      return;
+    }
+
+    try {
+      setGrowthLoading(true);
+      setGrowthError(null);
+      setGrowthSuccess(false);
+      
+      const result = await createGrowthUser(department as SchoolDepartment, email, password);
+      
+      if (result.success) {
+        setGrowthSuccess(true);
+        toast.success(result.message);
+        // Reset form fields
+        setDepartment("");
+        setEmail("");
+        setPassword("");
+      } else {
+        setGrowthError(result.message);
+        toast.error(result.message);
+      }
+    } catch (error: any) {
+      console.error('Error setting up growth user:', error);
+      setGrowthError(error.message || 'An unexpected error occurred');
+      toast.error('Failed to set up growth user');
+    } finally {
+      setGrowthLoading(false);
     }
   };
 
+  if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-gray-600">
+              You do not have permission to access this page. Only master admin users can set up the accounts team.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">Accounts Team Setup</h1>
+      <h1 className="text-3xl font-bold mb-8">System Setup</h1>
       
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Create Accounts Team User</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">
-            This will create a standard accounts team user with the following credentials:
-          </p>
-          <div className="space-y-2 p-4 bg-gray-50 rounded-md">
-            <div><strong>Email:</strong> account@haca.com</div>
-            <div><strong>Password:</strong> account@haca</div>
-            <div><strong>Role:</strong> Accounts Team</div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button 
-            onClick={handleCreateAccountsUser} 
-            disabled={isCreating}
-          >
-            {isCreating ? 'Creating...' : 'Create Accounts User'}
-          </Button>
-        </CardFooter>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Existing Accounts Team Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-4">Loading accounts users...</div>
-          ) : accountsUsers.length > 0 ? (
-            <div className="space-y-4">
-              {accountsUsers.map(user => (
-                <div key={user.id} className="flex items-center justify-between p-4 border rounded-md">
-                  <div>
-                    <div className="font-medium">{user.name}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  </div>
-                </div>
-              ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Accounts Team User</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-gray-600">
+              This will create a default accounts team user with the following credentials:
+            </p>
+            <div className="bg-gray-100 p-4 rounded-md mb-6">
+              <p><strong>Email:</strong> account@haca.com</p>
+              <p><strong>Password:</strong> account@haca</p>
             </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              No accounts team users found. Create one using the form above.
+            
+            {accountsSuccess && (
+              <div className="flex items-center gap-2 text-green-600 mb-4">
+                <CheckCircle2 className="h-5 w-5" />
+                <span>Accounts user created successfully</span>
+              </div>
+            )}
+            
+            {accountsError && (
+              <div className="flex items-center gap-2 text-red-600 mb-4">
+                <AlertCircle className="h-5 w-5" />
+                <span>{accountsError}</span>
+              </div>
+            )}
+            
+            <Button 
+              onClick={handleSetupAccounts}
+              disabled={accountsLoading || accountsSuccess}
+              className="w-full"
+            >
+              {accountsLoading ? 'Creating...' : accountsSuccess ? 'Created Successfully' : 'Create Accounts User'}
+            </Button>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Growth Team User</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-gray-600">
+              This will create a growth team user for a specific department:
+            </p>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Department</label>
+                <Select value={department} onValueChange={setDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(SchoolDepartment).map((dept) => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <Input 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="growth@department.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Password</label>
+                <Input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                />
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            
+            {growthSuccess && (
+              <div className="flex items-center gap-2 text-green-600 mb-4">
+                <CheckCircle2 className="h-5 w-5" />
+                <span>Growth user created successfully</span>
+              </div>
+            )}
+            
+            {growthError && (
+              <div className="flex items-center gap-2 text-red-600 mb-4">
+                <AlertCircle className="h-5 w-5" />
+                <span>{growthError}</span>
+              </div>
+            )}
+            
+            <Button 
+              onClick={handleSetupGrowthUser}
+              disabled={growthLoading}
+              className="w-full"
+            >
+              {growthLoading ? 'Creating...' : 'Create Growth User'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

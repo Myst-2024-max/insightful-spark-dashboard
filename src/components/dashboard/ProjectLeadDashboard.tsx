@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Target, Users, DollarSign, TrendingUp, BarChart4, Zap, Calendar } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
@@ -36,8 +35,8 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
     to: new Date()  // Today
   });
   
-  // This set contains the unique metric names we've already processed
-  const [processedMetrics] = useState(new Set<string>());
+  // Set to track processed metrics to avoid duplicates
+  const [processedMetricNames] = useState(new Set<string>());
 
   // Use either the prop department or user department
   useEffect(() => {
@@ -61,7 +60,7 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
       if (!activeDepartment) return;
 
       setIsLoading(true);
-      processedMetrics.clear(); // Reset the processed metrics set when fetching new data
+      processedMetricNames.clear(); // Reset the processed metrics set when fetching new data
       
       try {
         console.log(`Fetching metrics for department: ${activeDepartment}`);
@@ -84,21 +83,26 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
         console.log("Fetched metrics data:", metricsData);
 
         // Clear previously processed metrics
-        processedMetrics.clear();
+        processedMetricNames.clear();
 
         if (metricsData && metricsData.length > 0) {
-          // Reorganize metrics - ARPPU first, then other primary metrics
+          // Define the preferred order for primary metrics
           const mainMetricsOrder = ['ARPPU', 'Total Leads Needed', 'Conversion Ratio', 'Spend-Revenue Ratio', 'Fresh Admissions'];
           const secondaryMetricsNames = ['Second EMI', 'CPL'];
           
-          // Ensure we only include unique metrics by checking against processedMetrics set
+          // Ensure we only include unique metrics by checking against processedMetricNames set
           const primaryMetrics = metricsData
-            .filter(metric => mainMetricsOrder.includes(metric.metric_name) && !processedMetrics.has(metric.metric_name))
+            .filter(metric => {
+              // Only include metrics that are in our primary list and haven't been processed yet
+              return mainMetricsOrder.includes(metric.metric_name) && !processedMetricNames.has(metric.metric_name);
+            })
             .sort((a, b) => {
+              // Sort according to our preferred order
               return mainMetricsOrder.indexOf(a.metric_name) - mainMetricsOrder.indexOf(b.metric_name);
             })
             .map((metric, index) => {
-              processedMetrics.add(metric.metric_name);
+              // Mark this metric as processed
+              processedMetricNames.add(metric.metric_name);
               return {
                 id: index.toString(),
                 title: metric.metric_name,
@@ -112,9 +116,13 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
           setAnalyticsData(primaryMetrics);
 
           const secondary = metricsData
-            .filter(metric => secondaryMetricsNames.includes(metric.metric_name) && !processedMetrics.has(metric.metric_name))
+            .filter(metric => {
+              // Only include metrics that are in our secondary list and haven't been processed yet
+              return secondaryMetricsNames.includes(metric.metric_name) && !processedMetricNames.has(metric.metric_name);
+            })
             .map((metric, index) => {
-              processedMetrics.add(metric.metric_name);
+              // Mark this metric as processed
+              processedMetricNames.add(metric.metric_name);
               return {
                 id: (index + 5).toString(),
                 title: metric.metric_name,

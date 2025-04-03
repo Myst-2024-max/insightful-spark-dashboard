@@ -1,4 +1,3 @@
-
 // User roles for the HACA Academy dashboard
 export enum UserRole {
   MASTER_ADMIN = "MASTER_ADMIN",
@@ -96,10 +95,10 @@ import { LucideIcon } from 'lucide-react';
 export interface AnalyticsData {
   id: string;
   title: string;
-  value: number | string;
+  value: string | number;
   percentChange: number;
   trend: 'up' | 'down' | 'neutral';
-  icon: LucideIcon;  // Changed from optional to required
+  icon: LucideIcon;  // Make icon required
 }
 
 // Chart data interface
