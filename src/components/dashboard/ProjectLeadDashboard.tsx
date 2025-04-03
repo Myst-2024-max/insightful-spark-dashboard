@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Target, Users, DollarSign, TrendingUp, BarChart4, Zap } from 'lucide-react';
+import { Target, Users, DollarSign, TrendingUp, BarChart4, Zap, Calendar } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AnalyticsData } from '@/lib/types';
 import { getIconForMetric } from '@/utils/dashboardUtils';
+import DateFilter from '@/components/dashboard/DateFilter';
 
 interface ProjectLeadDashboardProps {
   department?: string;
@@ -30,6 +31,13 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
   const [conversionByChannelData, setConversionByChannelData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeDepartment, setActiveDepartment] = useState<string | undefined>(undefined);
+  const [dateRange, setDateRange] = useState({ 
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
+    to: new Date()  // Today
+  });
+  
+  // This set contains the unique metric names we've already processed
+  const [processedMetrics] = useState(new Set<string>());
 
   // Use either the prop department or user department
   useEffect(() => {
@@ -53,8 +61,14 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
       if (!activeDepartment) return;
 
       setIsLoading(true);
+      processedMetrics.clear(); // Reset the processed metrics set when fetching new data
+      
       try {
         console.log(`Fetching metrics for department: ${activeDepartment}`);
+        
+        // Format dates for API query
+        const fromDate = dateRange.from.toISOString().split('T')[0];
+        const toDate = dateRange.to.toISOString().split('T')[0];
         
         // Fetch analytics data
         const { data: metricsData, error: metricsError } = await supabase
@@ -69,31 +83,47 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
 
         console.log("Fetched metrics data:", metricsData);
 
-        // Map metrics to the format needed for DataCard
-        if (metricsData && metricsData.length > 0) {
-          const analytics = metricsData.filter(metric => 
-            ['Total Leads Needed', 'Conversion Ratio', 'Spend-Revenue Ratio', 'Fresh Admissions'].includes(metric.metric_name)
-          ).map((metric, index) => ({
-            id: index.toString(),
-            title: metric.metric_name,
-            value: metric.metric_value,
-            percentChange: metric.percent_change || 0,
-            trend: (metric.trend as 'up' | 'down' | 'neutral') || 'neutral',
-            icon: getIconForMetric(metric.metric_name)
-          }));
-          
-          setAnalyticsData(analytics);
+        // Clear previously processed metrics
+        processedMetrics.clear();
 
-          const secondary = metricsData.filter(metric => 
-            ['Second EMI', 'ARPPU', 'CPL'].includes(metric.metric_name)
-          ).map((metric, index) => ({
-            id: (index + 5).toString(),
-            title: metric.metric_name,
-            value: metric.metric_value,
-            percentChange: metric.percent_change || 0,
-            trend: (metric.trend as 'up' | 'down' | 'neutral') || 'neutral',
-            icon: getIconForMetric(metric.metric_name)
-          }));
+        if (metricsData && metricsData.length > 0) {
+          // Reorganize metrics - ARPPU first, then other primary metrics
+          const mainMetricsOrder = ['ARPPU', 'Total Leads Needed', 'Conversion Ratio', 'Spend-Revenue Ratio', 'Fresh Admissions'];
+          const secondaryMetricsNames = ['Second EMI', 'CPL'];
+          
+          // Ensure we only include unique metrics by checking against processedMetrics set
+          const primaryMetrics = metricsData
+            .filter(metric => mainMetricsOrder.includes(metric.metric_name) && !processedMetrics.has(metric.metric_name))
+            .sort((a, b) => {
+              return mainMetricsOrder.indexOf(a.metric_name) - mainMetricsOrder.indexOf(b.metric_name);
+            })
+            .map((metric, index) => {
+              processedMetrics.add(metric.metric_name);
+              return {
+                id: index.toString(),
+                title: metric.metric_name,
+                value: metric.metric_value,
+                percentChange: metric.percent_change || 0,
+                trend: (metric.trend as 'up' | 'down' | 'neutral') || 'neutral',
+                icon: getIconForMetric(metric.metric_name)
+              };
+            });
+          
+          setAnalyticsData(primaryMetrics);
+
+          const secondary = metricsData
+            .filter(metric => secondaryMetricsNames.includes(metric.metric_name) && !processedMetrics.has(metric.metric_name))
+            .map((metric, index) => {
+              processedMetrics.add(metric.metric_name);
+              return {
+                id: (index + 5).toString(),
+                title: metric.metric_name,
+                value: metric.metric_value,
+                percentChange: metric.percent_change || 0,
+                trend: (metric.trend as 'up' | 'down' | 'neutral') || 'neutral',
+                icon: getIconForMetric(metric.metric_name)
+              };
+            });
           
           setSecondMetrics(secondary);
         } else {
@@ -197,7 +227,7 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
         supabase.removeChannel(channel);
       };
     }
-  }, [activeDepartment, toast]);
+  }, [activeDepartment, toast, dateRange]);
 
   const onSubmit = async (data: { monthlyTarget: string, paidUserTarget: string, leadCount: string }) => {
     if (!activeDepartment) return;
@@ -241,6 +271,14 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
 
   return (
     <div className="space-y-8">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-semibold">{activeDepartment} School Dashboard</h2>
+        <DateFilter 
+          dateRange={dateRange} 
+          onDateChange={setDateRange}
+        />
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {analyticsData.length > 0 ? (
           analyticsData.map(data => (

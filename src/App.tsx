@@ -16,6 +16,7 @@ import UserManagement from "@/pages/UserManagement";
 import SchoolManagement from "@/pages/SchoolManagement";
 import ProgramManagement from "@/pages/ProgramManagement";
 import ProjectLeadPage from "@/pages/ProjectLeadPage";
+import AccountsSetup from "@/pages/AccountsSetup";
 import NotFound from "@/pages/NotFound";
 import NotAuthorized from "@/pages/NotAuthorized";
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/programs" element={<ProgramManagement />} />
               <Route path="/sales" element={<NotFound />} />
               <Route path="/accounts" element={<NotFound />} />
+              <Route path="/accounts-setup" element={<AccountsSetup />} /> {/* New route */}
               <Route path="/growth" element={<NotFound />} />
               <Route path="/teams" element={<NotFound />} />
               <Route path="/projects/:department" element={<ProjectLeadPage />} />
