@@ -18,6 +18,7 @@ import ProgramManagement from "@/pages/ProgramManagement";
 import ProjectLeadPage from "@/pages/ProjectLeadPage";
 import AccountsSetup from "@/pages/AccountsSetup";
 import AccountsPage from "@/pages/AccountsPage";
+import Growth from "@/pages/Growth";
 import NotFound from "@/pages/NotFound";
 import NotAuthorized from "@/pages/NotAuthorized";
 
@@ -44,7 +45,7 @@ const App = () => (
               <Route path="/sales" element={<NotFound />} />
               <Route path="/accounts" element={<AccountsPage />} />
               <Route path="/accounts-setup" element={<AccountsSetup />} /> 
-              <Route path="/growth" element={<NotFound />} />
+              <Route path="/growth" element={<Growth />} />
               <Route path="/teams" element={<NotFound />} />
               <Route path="/projects/:department" element={<ProjectLeadPage />} />
             </Route>

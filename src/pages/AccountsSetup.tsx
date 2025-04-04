@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/auth/AuthContext';
-import { createAccountsUser, createGrowthUser } from '@/utils/setupAccountsUser';
+import { createAccountsUser, createGrowthUser, createCodingGrowthUser } from '@/utils/setupAccountsUser';
 import { SchoolDepartment, UserRole } from '@/lib/types';
 import { toast } from 'sonner';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
@@ -22,6 +22,10 @@ const AccountsSetup = () => {
   const [department, setDepartment] = useState<SchoolDepartment | "">("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+
+  const [codingGrowthLoading, setCodingGrowthLoading] = useState(false);
+  const [codingGrowthSuccess, setCodingGrowthSuccess] = useState(false);
+  const [codingGrowthError, setCodingGrowthError] = useState<string | null>(null);
 
   const handleSetupAccounts = async () => {
     if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
@@ -100,6 +104,35 @@ const AccountsSetup = () => {
     }
   };
 
+  const handleSetupCodingGrowth = async () => {
+    if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
+      toast.error('Only master admin can perform this action');
+      return;
+    }
+
+    try {
+      setCodingGrowthLoading(true);
+      setCodingGrowthError(null);
+      setCodingGrowthSuccess(false);
+      
+      const result = await createCodingGrowthUser();
+      
+      if (result.success) {
+        setCodingGrowthSuccess(true);
+        toast.success(result.message);
+      } else {
+        setCodingGrowthError(result.message);
+        toast.error(result.message);
+      }
+    } catch (error: any) {
+      console.error('Error setting up coding growth user:', error);
+      setCodingGrowthError(error.message || 'An unexpected error occurred');
+      toast.error('Failed to set up coding growth user');
+    } finally {
+      setCodingGrowthLoading(false);
+    }
+  };
+
   if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
     return (
       <div className="h-full flex flex-col items-center justify-center">
@@ -121,7 +154,7 @@ const AccountsSetup = () => {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-8">System Setup</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Create Accounts Team User</CardTitle>
@@ -132,7 +165,7 @@ const AccountsSetup = () => {
             </p>
             <div className="bg-gray-100 p-4 rounded-md mb-6">
               <p><strong>Email:</strong> account@haca.com</p>
-              <p><strong>Password:</strong> account@haca</p>
+              <p><strong>Password:</strong> haca@1234</p>
             </div>
             
             {accountsSuccess && (
@@ -224,6 +257,44 @@ const AccountsSetup = () => {
               className="w-full"
             >
               {growthLoading ? 'Creating...' : 'Create Growth User'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Coding Growth User</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-gray-600">
+              This will create a pre-configured growth team user for the Coding department with the following credentials:
+            </p>
+            <div className="bg-gray-100 p-4 rounded-md mb-6">
+              <p><strong>Email:</strong> growth@coding.com</p>
+              <p><strong>Password:</strong> growth@password</p>
+              <p><strong>Department:</strong> CODING</p>
+            </div>
+            
+            {codingGrowthSuccess && (
+              <div className="flex items-center gap-2 text-green-600 mb-4">
+                <CheckCircle2 className="h-5 w-5" />
+                <span>Coding growth user created successfully</span>
+              </div>
+            )}
+            
+            {codingGrowthError && (
+              <div className="flex items-center gap-2 text-red-600 mb-4">
+                <AlertCircle className="h-5 w-5" />
+                <span>{codingGrowthError}</span>
+              </div>
+            )}
+            
+            <Button 
+              onClick={handleSetupCodingGrowth}
+              disabled={codingGrowthLoading || codingGrowthSuccess}
+              className="w-full"
+            >
+              {codingGrowthLoading ? 'Creating...' : codingGrowthSuccess ? 'Created Successfully' : 'Create Coding Growth User'}
             </Button>
           </CardContent>
         </Card>

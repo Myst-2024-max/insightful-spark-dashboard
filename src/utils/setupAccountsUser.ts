@@ -19,7 +19,23 @@ export const setupAccountsUser = async () => {
     // If user already exists, no need to create it again
     if (existingUser) {
       console.log("Accounts user already exists");
-      return { success: true, message: "Accounts user already exists" };
+      
+      // Update the password if it exists
+      const { error: updateError } = await supabase
+        .from('haca_users')
+        .update({
+          password: "haca@1234", // Updated password
+          active: true
+        })
+        .eq('id', existingUser.id);
+      
+      if (updateError) {
+        console.error("Error updating accounts user:", updateError);
+        throw updateError;
+      }
+      
+      console.log("Successfully updated accounts user password");
+      return { success: true, message: "Accounts user already exists, password updated" };
     }
     
     // Create the accounts team user
@@ -28,7 +44,7 @@ export const setupAccountsUser = async () => {
       .insert({
         name: "Accounts Team",
         email: "account@haca.com",
-        password: "account@haca", // In a real app, this would be hashed
+        password: "haca@1234", // Updated password
         role: UserRole.ACCOUNTS_TEAM,
         active: true
       });
@@ -131,4 +147,13 @@ export const createAccountsUser = async () => {
 
 export const createGrowthUser = async (department: SchoolDepartment, email: string, password: string) => {
   return await setupGrowthUser(department, email, password);
+};
+
+// Add a function to create a pre-configured growth user for the Coding department
+export const createCodingGrowthUser = async () => {
+  return await setupGrowthUser(
+    SchoolDepartment.CODING,
+    'growth@coding.com',
+    'growth@password'
+  );
 };
