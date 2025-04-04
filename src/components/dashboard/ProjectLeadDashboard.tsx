@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AnalyticsData } from '@/lib/types';
 import { getIconForMetric } from '@/utils/dashboardUtils';
 import DateFilter from '@/components/dashboard/DateFilter';
+import { DateRange } from "react-day-picker";
 
 interface ProjectLeadDashboardProps {
   department?: string;
@@ -30,7 +31,7 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
   const [conversionByChannelData, setConversionByChannelData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeDepartment, setActiveDepartment] = useState<string | undefined>(undefined);
-  const [dateRange, setDateRange] = useState({ 
+  const [dateRange, setDateRange] = useState<DateRange>({ 
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     to: new Date()  // Today
   });
@@ -60,8 +61,8 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
       try {
         console.log(`Fetching metrics for department: ${activeDepartment}`);
         
-        const fromDate = dateRange.from.toISOString().split('T')[0];
-        const toDate = dateRange.to.toISOString().split('T')[0];
+        const fromDate = dateRange.from?.toISOString().split('T')[0];
+        const toDate = dateRange.to?.toISOString().split('T')[0];
         
         const { data: metricsData, error: metricsError } = await supabase
           .from('dashboard_metrics')
@@ -251,6 +252,10 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
     }
   };
 
+  const handleDateRangeChange = (range: DateRange) => {
+    setDateRange(range);
+  };
+
   if (isLoading) {
     return <div className="p-8 text-center">Loading dashboard data...</div>;
   }
@@ -261,7 +266,7 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
         <h2 className="text-2xl font-semibold">{activeDepartment} School Dashboard</h2>
         <DateFilter 
           dateRange={dateRange} 
-          onDateChange={setDateRange}
+          onDateChange={handleDateRangeChange}
         />
       </div>
       

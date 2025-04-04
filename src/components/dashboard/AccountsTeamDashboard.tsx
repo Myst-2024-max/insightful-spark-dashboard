@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { DollarSign, Users, BookOpen, Calendar } from 'lucide-react';
+import { DollarSign, Users, BookOpen, CalendarIcon } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
@@ -15,7 +14,6 @@ import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/components/auth/AuthContext';
-import { CalendarIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -90,7 +88,7 @@ const AccountsTeamDashboard = () => {
       value: 56,
       percentChange: 0,
       trend: 'neutral' as const,
-      icon: Calendar,
+      icon: CalendarIcon,
     },
   ];
   
@@ -120,12 +118,10 @@ const AccountsTeamDashboard = () => {
 
   const onSubmit = async (data: FormValues) => {
     try {
-      // Calculate the remaining amount if needed
       const amountPaid = parseFloat(data.amountPaid);
       const totalSaleValue = parseFloat(data.totalSaleValue);
       const remainingAmount = totalSaleValue - amountPaid;
       
-      // Format date as ISO string for database
       const formattedDate = format(data.paymentDate, 'yyyy-MM-dd');
       
       const { error } = await supabase.from('accounts_data').insert({
@@ -140,8 +136,8 @@ const AccountsTeamDashboard = () => {
         amount_paid: amountPaid,
         total_sale_value: totalSaleValue,
         remaining_amount: remainingAmount,
-        school_id: '00000000-0000-0000-0000-000000000000', // This should be properly set based on selected school
-        user_id: user?.id || '00000000-0000-0000-0000-000000000000', // Use logged in user ID
+        school_id: '00000000-0000-0000-0000-000000000000',
+        user_id: user?.id || '00000000-0000-0000-0000-000000000000',
       });
       
       if (error) {
@@ -179,7 +175,6 @@ const AccountsTeamDashboard = () => {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Date of Payment */}
                     <FormField
                       control={form.control}
                       name="paymentDate"
@@ -211,7 +206,6 @@ const AccountsTeamDashboard = () => {
                                 selected={field.value}
                                 onSelect={field.onChange}
                                 initialFocus
-                                className="pointer-events-auto"
                               />
                             </PopoverContent>
                           </Popover>
@@ -219,7 +213,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Customer Name */}
                     <FormField
                       control={form.control}
                       name="customerName"
@@ -233,7 +226,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Mobile Number */}
                     <FormField
                       control={form.control}
                       name="mobileNumber"
@@ -247,7 +239,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Email */}
                     <FormField
                       control={form.control}
                       name="email"
@@ -261,7 +252,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Course Name */}
                     <FormField
                       control={form.control}
                       name="courseName"
@@ -275,7 +265,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Course Tenure */}
                     <FormField
                       control={form.control}
                       name="courseTenure"
@@ -289,7 +278,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Mode of Learning */}
                     <FormField
                       control={form.control}
                       name="modeOfLearning"
@@ -312,7 +300,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Batch Name */}
                     <FormField
                       control={form.control}
                       name="batchName"
@@ -326,7 +313,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Amount Paid Now */}
                     <FormField
                       control={form.control}
                       name="amountPaid"
@@ -340,7 +326,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Total Sale Value */}
                     <FormField
                       control={form.control}
                       name="totalSaleValue"
@@ -354,7 +339,6 @@ const AccountsTeamDashboard = () => {
                       )}
                     />
                     
-                    {/* Remaining Amount */}
                     <FormField
                       control={form.control}
                       name="remainingAmount"

@@ -1,302 +1,189 @@
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/components/auth/AuthContext';
-import { createAccountsUser, createGrowthUser, createCodingGrowthUser } from '@/utils/setupAccountsUser';
-import { SchoolDepartment, UserRole } from '@/lib/types';
-import { toast } from 'sonner';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { UserRole, SchoolDepartment } from '@/lib/types';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { setupAccountsUser, setupGrowthUser } from '@/utils/setupAccountsUser';
+import { toast } from 'sonner';
 
 const AccountsSetup = () => {
-  const { user, checkUserPermission } = useAuth();
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [accountsSuccess, setAccountsSuccess] = useState(false);
-  const [accountsError, setAccountsError] = useState<string | null>(null);
-  
-  const [growthLoading, setGrowthLoading] = useState(false);
-  const [growthSuccess, setGrowthSuccess] = useState(false);
-  const [growthError, setGrowthError] = useState<string | null>(null);
-  const [department, setDepartment] = useState<SchoolDepartment | "">("");
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [setupType, setSetupType] = useState<'quick' | 'custom'>('quick');
+  const [department, setDepartment] = useState<SchoolDepartment | ''>('');
 
-  const [codingGrowthLoading, setCodingGrowthLoading] = useState(false);
-  const [codingGrowthSuccess, setCodingGrowthSuccess] = useState(false);
-  const [codingGrowthError, setCodingGrowthError] = useState<string | null>(null);
-
-  const handleSetupAccounts = async () => {
-    if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
-      toast.error('Only master admin can perform this action');
-      return;
-    }
-
+  const handleQuickSetup = async () => {
+    setLoading(true);
     try {
-      setAccountsLoading(true);
-      setAccountsError(null);
-      setAccountsSuccess(false);
-      
-      const result = await createAccountsUser();
+      const result = await setupAccountsUser();
       
       if (result.success) {
-        setAccountsSuccess(true);
-        toast.success(result.message);
+        toast.success('Accounts team user created successfully!');
+        navigate('/login');
       } else {
-        setAccountsError(result.message);
-        toast.error(result.message);
+        toast.error(result.error || 'Failed to set up accounts team');
       }
-    } catch (error: any) {
-      console.error('Error setting up accounts user:', error);
-      setAccountsError(error.message || 'An unexpected error occurred');
-      toast.error('Failed to set up accounts user');
+    } catch (error) {
+      console.error('Error in quick setup:', error);
+      toast.error('An error occurred during setup');
     } finally {
-      setAccountsLoading(false);
+      setLoading(false);
     }
   };
-  
-  const handleSetupGrowthUser = async () => {
-    if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
-      toast.error('Only master admin can perform this action');
-      return;
-    }
-    
+
+  const handleGrowthSetup = async () => {
     if (!department) {
       toast.error('Please select a department');
       return;
     }
     
-    if (!email) {
-      toast.error('Please enter an email');
-      return;
-    }
-    
-    if (!password || password.length < 6) {
-      toast.error('Please enter a password with at least 6 characters');
-      return;
-    }
-
+    setLoading(true);
     try {
-      setGrowthLoading(true);
-      setGrowthError(null);
-      setGrowthSuccess(false);
-      
-      const result = await createGrowthUser(department as SchoolDepartment, email, password);
+      const result = await setupGrowthUser(department as SchoolDepartment);
       
       if (result.success) {
-        setGrowthSuccess(true);
-        toast.success(result.message);
-        // Reset form fields
-        setDepartment("");
-        setEmail("");
-        setPassword("");
+        toast.success(`Growth team user created successfully for ${department} department!`);
+        navigate('/login');
       } else {
-        setGrowthError(result.message);
-        toast.error(result.message);
+        toast.error(result.error || 'Failed to set up growth team');
       }
-    } catch (error: any) {
-      console.error('Error setting up growth user:', error);
-      setGrowthError(error.message || 'An unexpected error occurred');
-      toast.error('Failed to set up growth user');
+    } catch (error) {
+      console.error('Error in growth setup:', error);
+      toast.error('An error occurred during setup');
     } finally {
-      setGrowthLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleSetupCodingGrowth = async () => {
-    if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
-      toast.error('Only master admin can perform this action');
-      return;
-    }
-
-    try {
-      setCodingGrowthLoading(true);
-      setCodingGrowthError(null);
-      setCodingGrowthSuccess(false);
-      
-      const result = await createCodingGrowthUser();
-      
-      if (result.success) {
-        setCodingGrowthSuccess(true);
-        toast.success(result.message);
-      } else {
-        setCodingGrowthError(result.message);
-        toast.error(result.message);
-      }
-    } catch (error: any) {
-      console.error('Error setting up coding growth user:', error);
-      setCodingGrowthError(error.message || 'An unexpected error occurred');
-      toast.error('Failed to set up coding growth user');
-    } finally {
-      setCodingGrowthLoading(false);
-    }
+  // Fix for the SchoolDepartment type issue
+  const handleDepartmentChange = (value: string) => {
+    setDepartment(value as SchoolDepartment | '');
   };
 
-  if (!checkUserPermission(UserRole.MASTER_ADMIN)) {
+  if (!user || !user.role || user.role !== UserRole.MASTER_ADMIN) {
     return (
-      <div className="h-full flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center min-h-[70vh]">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center">Access Denied</CardTitle>
+            <CardTitle>Unauthorized Access</CardTitle>
+            <CardDescription>
+              You need to be logged in as an admin to access this page.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-center text-gray-600">
-              You do not have permission to access this page. Only master admin users can set up the accounts team.
-            </p>
-          </CardContent>
+          <CardFooter>
+            <Button onClick={() => navigate('/login')} className="w-full">
+              Go to Login
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">System Setup</h1>
+    <div className="container mx-auto py-10 max-w-4xl animate-fade-in">
+      <h1 className="text-3xl font-bold mb-8">Accounts Setup</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Create Accounts Team User</CardTitle>
+            <CardTitle>Setup Options</CardTitle>
+            <CardDescription>
+              Choose how you want to set up user accounts for your academy
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-gray-600">
-              This will create a default accounts team user with the following credentials:
-            </p>
-            <div className="bg-gray-100 p-4 rounded-md mb-6">
-              <p><strong>Email:</strong> account@haca.com</p>
-              <p><strong>Password:</strong> haca@1234</p>
-            </div>
-            
-            {accountsSuccess && (
-              <div className="flex items-center gap-2 text-green-600 mb-4">
-                <CheckCircle2 className="h-5 w-5" />
-                <span>Accounts user created successfully</span>
-              </div>
-            )}
-            
-            {accountsError && (
-              <div className="flex items-center gap-2 text-red-600 mb-4">
-                <AlertCircle className="h-5 w-5" />
-                <span>{accountsError}</span>
-              </div>
-            )}
-            
-            <Button 
-              onClick={handleSetupAccounts}
-              disabled={accountsLoading || accountsSuccess}
-              className="w-full"
+            <RadioGroup 
+              defaultValue={setupType}
+              onValueChange={(value) => setSetupType(value as 'quick' | 'custom')}
+              className="flex flex-col gap-4"
             >
-              {accountsLoading ? 'Creating...' : accountsSuccess ? 'Created Successfully' : 'Create Accounts User'}
-            </Button>
+              <div className="flex items-start space-x-2">
+                <RadioGroupItem value="quick" id="quick" />
+                <div className="grid gap-1.5">
+                  <Label htmlFor="quick" className="font-medium">
+                    Quick Setup (Accounts Team)
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Creates a pre-configured accounts team user with access to all schools
+                  </p>
+                  <div className="border rounded p-3 mt-2 bg-gray-50">
+                    <p className="text-sm font-medium">User credentials:</p>
+                    <p className="text-xs text-gray-500">Email: account@haca.com</p>
+                    <p className="text-xs text-gray-500">Password: haca@1234</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-2">
+                <RadioGroupItem value="growth" id="growth" />
+                <div className="grid gap-1.5">
+                  <Label htmlFor="growth" className="font-medium">
+                    Growth Team Setup
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Creates a pre-configured growth team user for a specific department
+                  </p>
+                  {setupType === 'growth' && (
+                    <div className="mt-4">
+                      <Label htmlFor="department">Department</Label>
+                      <Select 
+                        value={department} 
+                        onValueChange={handleDepartmentChange}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={SchoolDepartment.CODING}>Coding</SelectItem>
+                          <SelectItem value={SchoolDepartment.DESIGN}>Design</SelectItem>
+                          <SelectItem value={SchoolDepartment.MARKETING}>Marketing</SelectItem>
+                          <SelectItem value={SchoolDepartment.FINANCE}>Finance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      <div className="border rounded p-3 mt-4 bg-gray-50">
+                        <p className="text-sm font-medium">User credentials:</p>
+                        <p className="text-xs text-gray-500">Email: growth-{department.toLowerCase() || 'department'}@haca.com</p>
+                        <p className="text-xs text-gray-500">Password: haca@1234</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </RadioGroup>
           </CardContent>
+          <CardFooter className="flex justify-end">
+            <Button
+              onClick={setupType === 'quick' ? handleQuickSetup : handleGrowthSetup}
+              disabled={loading || (setupType === 'growth' && !department)}
+            >
+              {loading ? 'Setting up...' : 'Create Account'}
+            </Button>
+          </CardFooter>
         </Card>
         
         <Card>
           <CardHeader>
-            <CardTitle>Create Growth Team User</CardTitle>
+            <CardTitle>Custom Setup</CardTitle>
+            <CardDescription>For advanced users and custom configurations</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-gray-600">
-              This will create a growth team user for a specific department:
+            <p className="text-sm text-gray-500">
+              If you need more control over user permissions, roles, and account settings, use the User Management page to create and configure users individually.
             </p>
-            
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium mb-1">Department</label>
-                <Select value={department} onValueChange={setDepartment}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(SchoolDepartment).map((dept) => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
-                <Input 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="growth@department.com"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Password</label>
-                <Input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                />
-              </div>
-            </div>
-            
-            {growthSuccess && (
-              <div className="flex items-center gap-2 text-green-600 mb-4">
-                <CheckCircle2 className="h-5 w-5" />
-                <span>Growth user created successfully</span>
-              </div>
-            )}
-            
-            {growthError && (
-              <div className="flex items-center gap-2 text-red-600 mb-4">
-                <AlertCircle className="h-5 w-5" />
-                <span>{growthError}</span>
-              </div>
-            )}
-            
-            <Button 
-              onClick={handleSetupGrowthUser}
-              disabled={growthLoading}
-              className="w-full"
-            >
-              {growthLoading ? 'Creating...' : 'Create Growth User'}
-            </Button>
           </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Coding Growth User</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-gray-600">
-              This will create a pre-configured growth team user for the Coding department with the following credentials:
-            </p>
-            <div className="bg-gray-100 p-4 rounded-md mb-6">
-              <p><strong>Email:</strong> growth@coding.com</p>
-              <p><strong>Password:</strong> growth@password</p>
-              <p><strong>Department:</strong> CODING</p>
-            </div>
-            
-            {codingGrowthSuccess && (
-              <div className="flex items-center gap-2 text-green-600 mb-4">
-                <CheckCircle2 className="h-5 w-5" />
-                <span>Coding growth user created successfully</span>
-              </div>
-            )}
-            
-            {codingGrowthError && (
-              <div className="flex items-center gap-2 text-red-600 mb-4">
-                <AlertCircle className="h-5 w-5" />
-                <span>{codingGrowthError}</span>
-              </div>
-            )}
-            
-            <Button 
-              onClick={handleSetupCodingGrowth}
-              disabled={codingGrowthLoading || codingGrowthSuccess}
-              className="w-full"
-            >
-              {codingGrowthLoading ? 'Creating...' : codingGrowthSuccess ? 'Created Successfully' : 'Create Coding Growth User'}
+          <CardFooter>
+            <Button variant="outline" onClick={() => navigate('/users')}>
+              Go to User Management
             </Button>
-          </CardContent>
+          </CardFooter>
         </Card>
       </div>
     </div>

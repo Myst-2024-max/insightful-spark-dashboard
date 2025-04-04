@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -119,7 +118,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ existingAccount, onSave, onCa
       } else {
         const { error } = await supabase
           .from('accounts_data')
-          .insert([accountData]);
+          .insert(accountData);
 
         if (error) throw error;
         toast.success('Account created successfully');
@@ -138,8 +137,8 @@ const AccountForm: React.FC<AccountFormProps> = ({ existingAccount, onSave, onCa
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'amount_paid' || name === 'remaining_amount') {
-        const amountPaid = parseFloat(value.amount_paid as string) || 0;
-        const remainingAmount = parseFloat(value.remaining_amount as string) || 0;
+        const amountPaid = parseFloat(value.amount_paid as unknown as string) || 0;
+        const remainingAmount = parseFloat(value.remaining_amount as unknown as string) || 0;
         form.setValue('total_sale_value', amountPaid + remainingAmount);
       }
     });
