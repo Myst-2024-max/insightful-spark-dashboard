@@ -13,6 +13,7 @@ import DateFilter from '@/components/dashboard/DateFilter';
 import { Plus, FileEdit, Trash2 } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import AccountForm from '@/components/accounts/AccountForm';
+import AccountsTeamDashboard from '@/components/dashboard/AccountsTeamDashboard';
 
 interface AccountData {
   id: string;
@@ -40,6 +41,7 @@ const AccountsPage = () => {
   });
   const [showForm, setShowForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AccountData | null>(null);
+  const [showDashboard, setShowDashboard] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -104,11 +106,13 @@ const AccountsPage = () => {
   const handleAddAccount = () => {
     setEditingAccount(null);
     setShowForm(true);
+    setShowDashboard(false);
   };
 
   const handleEditAccount = (account: AccountData) => {
     setEditingAccount(account);
     setShowForm(true);
+    setShowDashboard(false);
   };
 
   const handleDeleteAccount = async (id: string) => {
@@ -134,7 +138,15 @@ const AccountsPage = () => {
 
   const handleAccountSaved = () => {
     setShowForm(false);
+    setShowDashboard(true);
     fetchAccounts();
+  };
+
+  const toggleView = () => {
+    setShowDashboard(!showDashboard);
+    if (showForm) {
+      setShowForm(false);
+    }
   };
 
   // Redirect if not authorized
@@ -156,85 +168,104 @@ const AccountsPage = () => {
           </p>
         </div>
         <div className="flex gap-4">
-          <DateFilter dateRange={dateRange} onDateChange={setDateRange} />
-          <Button onClick={handleAddAccount} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add New Account
+          <Button 
+            variant={showDashboard ? "outline" : "default"}
+            onClick={toggleView}
+          >
+            {showDashboard ? "View Accounts List" : "View Dashboard"}
           </Button>
+          {!showDashboard && (
+            <DateFilter dateRange={dateRange} onDateChange={setDateRange} />
+          )}
+          {!showDashboard && !showForm && (
+            <Button onClick={handleAddAccount} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add New Account
+            </Button>
+          )}
         </div>
       </header>
+
+      {showDashboard && (
+        <AccountsTeamDashboard />
+      )}
 
       {showForm && (
         <CustomCard className="mb-8">
           <AccountForm 
             existingAccount={editingAccount} 
             onSave={handleAccountSaved} 
-            onCancel={() => setShowForm(false)} 
+            onCancel={() => {
+              setShowForm(false); 
+              setShowDashboard(true);
+            }} 
           />
         </CustomCard>
       )}
 
-      <CustomCard>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Customer Name</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Amount Paid</TableHead>
-                <TableHead>Remaining</TableHead>
-                <TableHead>Total Value</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+      {!showDashboard && !showForm && (
+        <CustomCard>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
-                    Loading accounts...
-                  </TableCell>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Customer Name</TableHead>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Amount Paid</TableHead>
+                  <TableHead>Remaining</TableHead>
+                  <TableHead>Total Value</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : accounts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
-                    No accounts found. Add your first account to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                accounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell>{new Date(account.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="font-medium">{account.customer_name}</TableCell>
-                    <TableCell>{account.course_name}</TableCell>
-                    <TableCell>₹{account.amount_paid.toLocaleString()}</TableCell>
-                    <TableCell>₹{account.remaining_amount.toLocaleString()}</TableCell>
-                    <TableCell>₹{account.total_sale_value.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditAccount(account)}
-                        >
-                          <FileEdit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDeleteAccount(account.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      Loading accounts...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CustomCard>
+                ) : accounts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      No accounts found. Add your first account to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  accounts.map((account) => (
+                    <TableRow key={account.id}>
+                      <TableCell>{new Date(account.date).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{account.customer_name}</TableCell>
+                      <TableCell>{account.course_name}</TableCell>
+                      <TableCell>₹{account.amount_paid.toLocaleString()}</TableCell>
+                      <TableCell>₹{account.remaining_amount.toLocaleString()}</TableCell>
+                      <TableCell>₹{account.total_sale_value.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditAccount(account)}
+                          >
+                            <FileEdit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDeleteAccount(account.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CustomCard>
+      )}
     </div>
   );
 };

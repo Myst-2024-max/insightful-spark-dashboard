@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DollarSign, Users, BookOpen, Calendar } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
@@ -9,22 +10,55 @@ import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useAuth } from '@/components/auth/AuthContext';
+import { CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+const formSchema = z.object({
+  paymentDate: z.date({
+    required_error: "Date of payment is required",
+  }),
+  customerName: z.string().min(1, "Customer name is required"),
+  mobileNumber: z.string().min(10, "Valid mobile number is required"),
+  email: z.string().email("Valid email is required"),
+  courseName: z.string().min(1, "Course name is required"),
+  courseTenure: z.string().min(1, "Course tenure is required"),
+  modeOfLearning: z.string().min(1, "Mode of learning is required"),
+  batchName: z.string().min(1, "Batch name is required"),
+  amountPaid: z.string().min(1, "Amount paid is required"),
+  totalSaleValue: z.string().min(1, "Total sale value is required"),
+  remainingAmount: z.string().min(1, "Remaining amount is required"),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 const AccountsTeamDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const form = useForm({
+  const { user } = useAuth();
+  
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       customerName: '',
-      mobile: '',
+      mobileNumber: '',
       email: '',
       batchName: '',
       amountPaid: '',
       totalSaleValue: '',
       remainingAmount: '',
+      courseName: '',
+      courseTenure: '',
       modeOfLearning: 'online'
     },
   });
-
+  
   const analyticsData = [
     {
       id: '1',
@@ -84,10 +118,45 @@ const AccountsTeamDashboard = () => {
     { name: 'Pending', value: 17 },
   ];
 
-  const onSubmit = (data: any) => {
-    console.log(data);
-    setIsFormOpen(false);
-    // Here you would normally update the data in your backend
+  const onSubmit = async (data: FormValues) => {
+    try {
+      // Calculate the remaining amount if needed
+      const amountPaid = parseFloat(data.amountPaid);
+      const totalSaleValue = parseFloat(data.totalSaleValue);
+      const remainingAmount = totalSaleValue - amountPaid;
+      
+      // Format date as ISO string for database
+      const formattedDate = format(data.paymentDate, 'yyyy-MM-dd');
+      
+      const { error } = await supabase.from('accounts_data').insert({
+        date: formattedDate,
+        customer_name: data.customerName,
+        mobile_number: data.mobileNumber,
+        email: data.email,
+        course_name: data.courseName,
+        tenure: data.courseTenure,
+        mode_of_learning: data.modeOfLearning,
+        batch_name: data.batchName,
+        amount_paid: amountPaid,
+        total_sale_value: totalSaleValue,
+        remaining_amount: remainingAmount,
+        school_id: '00000000-0000-0000-0000-000000000000', // This should be properly set based on selected school
+        user_id: user?.id || '00000000-0000-0000-0000-000000000000', // Use logged in user ID
+      });
+      
+      if (error) {
+        console.error('Error saving payment data:', error);
+        toast.error('Failed to save payment data');
+        return;
+      }
+      
+      toast.success('Payment data saved successfully');
+      setIsFormOpen(false);
+      form.reset();
+    } catch (err) {
+      console.error('Error processing payment submission:', err);
+      toast.error('An error occurred while processing your request');
+    }
   };
 
   return (
@@ -110,6 +179,47 @@ const AccountsTeamDashboard = () => {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Date of Payment */}
+                    <FormField
+                      control={form.control}
+                      name="paymentDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Date of Payment</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Select date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Customer Name */}
                     <FormField
                       control={form.control}
                       name="customerName"
@@ -122,78 +232,64 @@ const AccountsTeamDashboard = () => {
                         </FormItem>
                       )}
                     />
+                    
+                    {/* Mobile Number */}
                     <FormField
                       control={form.control}
-                      name="mobile"
+                      name="mobileNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Mobile</FormLabel>
+                          <FormLabel>Mobile Number</FormLabel>
                           <FormControl>
                             <Input placeholder="+91 9876543210" {...field} />
                           </FormControl>
                         </FormItem>
                       )}
                     />
+                    
+                    {/* Email */}
                     <FormField
                       control={form.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Email ID</FormLabel>
                           <FormControl>
                             <Input placeholder="john@example.com" {...field} />
                           </FormControl>
                         </FormItem>
                       )}
                     />
+                    
+                    {/* Course Name */}
                     <FormField
                       control={form.control}
-                      name="batchName"
+                      name="courseName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Batch Name</FormLabel>
+                          <FormLabel>Course Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Web Dev Batch 12" {...field} />
+                            <Input placeholder="Web Development" {...field} />
                           </FormControl>
                         </FormItem>
                       )}
                     />
+                    
+                    {/* Course Tenure */}
                     <FormField
                       control={form.control}
-                      name="amountPaid"
+                      name="courseTenure"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Amount Paid (₹)</FormLabel>
+                          <FormLabel>Course Tenure</FormLabel>
                           <FormControl>
-                            <Input placeholder="25000" {...field} />
+                            <Input placeholder="6 months" {...field} />
                           </FormControl>
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="totalSaleValue"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Total Sale Value (₹)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="50000" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="remainingAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Remaining Amount (₹)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="25000" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                    
+                    {/* Mode of Learning */}
                     <FormField
                       control={form.control}
                       name="modeOfLearning"
@@ -215,7 +311,64 @@ const AccountsTeamDashboard = () => {
                         </FormItem>
                       )}
                     />
+                    
+                    {/* Batch Name */}
+                    <FormField
+                      control={form.control}
+                      name="batchName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Batch Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Web Dev Batch 12" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Amount Paid Now */}
+                    <FormField
+                      control={form.control}
+                      name="amountPaid"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount Paid Now (₹)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="25000" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Total Sale Value */}
+                    <FormField
+                      control={form.control}
+                      name="totalSaleValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Total Sale Value (₹)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="50000" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Remaining Amount */}
+                    <FormField
+                      control={form.control}
+                      name="remainingAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Remaining Amount (₹)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="25000" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </div>
+                  
                   <div className="flex space-x-2">
                     <Button type="submit">Save Payment</Button>
                     <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
