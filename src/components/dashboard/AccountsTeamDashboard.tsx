@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, Users, BookOpen, CalendarIcon } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
@@ -18,6 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
+import DateFilter from './DateFilter';
 
 const formSchema = z.object({
   paymentDate: z.date({
@@ -40,24 +42,12 @@ type FormValues = z.infer<typeof formSchema>;
 const AccountsTeamDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { user } = useAuth();
-  
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      customerName: '',
-      mobileNumber: '',
-      email: '',
-      batchName: '',
-      amountPaid: '',
-      totalSaleValue: '',
-      remainingAmount: '',
-      courseName: '',
-      courseTenure: '',
-      modeOfLearning: 'online'
-    },
+  const [isLoading, setIsLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date()
   });
-  
-  const analyticsData = [
+  const [analyticsData, setAnalyticsData] = useState([
     {
       id: '1',
       title: 'Total Payments',
@@ -90,9 +80,9 @@ const AccountsTeamDashboard = () => {
       trend: 'neutral' as const,
       icon: CalendarIcon,
     },
-  ];
+  ]);
   
-  const paymentHistoryData = [
+  const [paymentHistoryData, setPaymentHistoryData] = useState([
     { name: 'Jan', amount: 32000 },
     { name: 'Feb', amount: 38000 },
     { name: 'Mar', amount: 41000 },
@@ -102,19 +92,52 @@ const AccountsTeamDashboard = () => {
     { name: 'Jul', amount: 56000 },
     { name: 'Aug', amount: 62000 },
     { name: 'Sep', amount: 52000 },
-  ];
+  ]);
   
-  const modeOfLearningData = [
+  const [modeOfLearningData, setModeOfLearningData] = useState([
     { name: 'Online', value: 65 },
     { name: 'Hybrid', value: 25 },
     { name: 'Offline', value: 10 },
-  ];
+  ]);
   
-  const paymentStatusData = [
+  const [paymentStatusData, setPaymentStatusData] = useState([
     { name: 'Full Payment', value: 45 },
     { name: 'Partial Payment', value: 38 },
     { name: 'Pending', value: 17 },
-  ];
+  ]);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      customerName: '',
+      mobileNumber: '',
+      email: '',
+      batchName: '',
+      amountPaid: '',
+      totalSaleValue: '',
+      remainingAmount: '',
+      courseName: '',
+      courseTenure: '',
+      modeOfLearning: 'online'
+    },
+  });
+  
+  const handleDateRangeChange = (newDateRange: DateRange) => {
+    setDateRange(newDateRange);
+    // In a real application, we would filter data based on the date range
+    // For now, we'll just simulate a loading state
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+  };
+
+  useEffect(() => {
+    // Simulate loading
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  }, []);
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -155,8 +178,27 @@ const AccountsTeamDashboard = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="h-[100px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+          ))}
+        </div>
+        <Card className="h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+          <Card className="h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
+      <DateFilter dateRange={dateRange} onDateChange={handleDateRangeChange} />
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {analyticsData.map(data => (
           <DataCard key={data.id} data={data} />

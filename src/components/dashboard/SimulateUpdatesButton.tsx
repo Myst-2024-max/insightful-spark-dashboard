@@ -1,15 +1,18 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { simulateAllUpdates } from '@/utils/simulateDataUpdates';
 import { UserRole } from '@/lib/types';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 const SimulateUpdatesButton = () => {
   const [isLoading, setIsLoading] = React.useState(false);
+  const [lastUpdate, setLastUpdate] = React.useState<Date | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -57,6 +60,8 @@ const SimulateUpdatesButton = () => {
           duration: 4000,
         });
       }
+      
+      setLastUpdate(new Date());
     } catch (error) {
       console.error('Error simulating updates:', error);
       toast.error('Failed to simulate updates. Please try again.', {
@@ -68,15 +73,42 @@ const SimulateUpdatesButton = () => {
   };
   
   return (
-    <Button 
-      variant="default" 
-      className="flex items-center gap-2 bg-primary hover:bg-primary/90"
-      onClick={handleSimulateUpdates}
-      disabled={isLoading}
-    >
-      <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-      {isLoading ? 'Updating...' : 'Simulate Updates'}
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative">
+            <Button 
+              variant="default" 
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all duration-300 shadow-md hover:shadow-lg relative overflow-hidden scale-on-hover"
+              onClick={handleSimulateUpdates}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className={`h-4 w-4`} />
+              )}
+              {isLoading ? 'Updating...' : 'Simulate Updates'}
+              
+              {/* Add a pulsing effect when updates are available */}
+              {!isLoading && lastUpdate && (
+                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+              )}
+            </Button>
+            
+            {/* Show last update time */}
+            {lastUpdate && (
+              <Badge variant="outline" className="absolute -bottom-6 right-0 text-xs bg-white dark:bg-gray-800">
+                Updated: {lastUpdate.toLocaleTimeString()}
+              </Badge>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isLoading ? 'Generating new data...' : 'Generate random data updates'}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

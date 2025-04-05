@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthContext';
 import { getIconForMetric, updateMetric } from '@/utils/dashboardUtils';
+import { DateRange } from 'react-day-picker';
+import DateFilter from './DateFilter';
 
 const GrowthTeamDashboard = () => {
   const { user } = useAuth();
@@ -23,6 +25,10 @@ const GrowthTeamDashboard = () => {
   const [spendByProgramData, setSpendByProgramData] = useState([]);
   const [leadsBySourceData, setLeadsBySourceData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date()
+  });
 
   const form = useForm({
     defaultValues: {
@@ -139,6 +145,16 @@ const GrowthTeamDashboard = () => {
       supabase.removeChannel(channel);
     };
   }, [user?.department, toast]);
+  
+  const handleDateRangeChange = (newDateRange: DateRange) => {
+    setDateRange(newDateRange);
+    setIsLoading(true);
+    // In a real application, we would filter data based on the date range
+    // For now, we'll just simulate it
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+  };
 
   const onSubmit = async (data) => {
     if (!user?.department) {
@@ -189,11 +205,30 @@ const GrowthTeamDashboard = () => {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center">Loading dashboard data...</div>;
+    return (
+      <div className="space-y-8">
+        <div className="h-[60px] animate-pulse bg-gray-100 dark:bg-gray-800 rounded-md"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="h-[100px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+          <Card className="h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+          <Card className="h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800"></Card>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-8">
+      <DateFilter dateRange={dateRange} onDateChange={handleDateRangeChange} />
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {analyticsData.map(data => (
           <DataCard key={data.id} data={data} />

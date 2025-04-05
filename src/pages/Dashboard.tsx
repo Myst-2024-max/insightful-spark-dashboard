@@ -15,6 +15,10 @@ import DashboardDataOverview from '@/components/dashboard/DashboardDataOverview'
 import { supabase } from '@/integrations/supabase/client';
 import WelcomeBanner from '@/components/dashboard/WelcomeBanner';
 import { DateRange } from 'react-day-picker';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -23,6 +27,8 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [hasError, setHasError] = useState<boolean>(false);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date()
@@ -34,6 +40,11 @@ const Dashboard = () => {
     if (welcomeDismissed === 'true') {
       setShowWelcome(false);
     }
+    
+    // Simulate loading dashboard data
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
   }, []);
 
   const handleDismissWelcome = () => {
@@ -213,6 +224,15 @@ const Dashboard = () => {
     return `${user.department} School`;
   };
   
+  const retryLoading = () => {
+    setIsLoading(true);
+    setHasError(false);
+    // Simulate loading
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  };
+  
   const renderDashboard = () => {
     if (!user) return null;
     
@@ -262,9 +282,36 @@ const Dashboard = () => {
         </div>
       </header>
       
-      <DashboardDataOverview department={user?.department} />
-      
-      {renderDashboard()}
+      {isLoading ? (
+        <div className="space-y-8">
+          <Skeleton className="h-[200px] w-full rounded-lg" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-[100px] w-full rounded-lg" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-[300px] w-full rounded-lg" />
+            <Skeleton className="h-[300px] w-full rounded-lg" />
+          </div>
+        </div>
+      ) : hasError ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error loading dashboard</AlertTitle>
+          <AlertDescription>
+            There was a problem loading your dashboard data.
+            <Button variant="outline" size="sm" className="ml-2 mt-2" onClick={retryLoading}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <DashboardDataOverview department={user?.department} />
+          {renderDashboard()}
+        </>
+      )}
     </div>
   );
 };
