@@ -45,7 +45,11 @@ const AccountsSetup = () => {
     
     setLoading(true);
     try {
-      const result = await setupGrowthUser(department as SchoolDepartment);
+      // Generate email based on department
+      const email = `growth-${department.toLowerCase()}@haca.com`;
+      const password = "haca@1234"; // Default password
+      
+      const result = await setupGrowthUser(department as SchoolDepartment, email, password);
       
       if (result.success) {
         toast.success(`Growth team user created successfully for ${department} department!`);
