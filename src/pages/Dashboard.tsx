@@ -71,15 +71,18 @@ const Dashboard = () => {
           schema: 'public',
           table: 'dashboard_metrics'
         },
-        (payload) => {
+        (payload: any) => {
           console.log('Dashboard metrics changed:', payload);
           setLastUpdate(new Date());
           
-          // Notify user about real-time update
-          toast({
-            title: "Dashboard Updated",
-            description: `${payload.new.metric_name} metric has been updated in real-time.`,
-          });
+          // Safely access payload properties
+          if (payload.new && typeof payload.new === 'object' && 'metric_name' in payload.new) {
+            // Notify user about real-time update
+            toast({
+              title: "Dashboard Updated",
+              description: `${payload.new.metric_name} metric has been updated in real-time.`,
+            });
+          }
         }
       )
       .subscribe();
@@ -96,15 +99,18 @@ const Dashboard = () => {
           schema: 'public',
           table: 'dashboard_charts'
         },
-        (payload) => {
+        (payload: any) => {
           console.log('Dashboard charts changed:', payload);
           setLastUpdate(new Date());
           
-          // Notify user about real-time update
-          toast({
-            title: "Chart Updated",
-            description: `${payload.new.chart_name} chart has been updated in real-time.`,
-          });
+          // Safely access payload properties
+          if (payload.new && typeof payload.new === 'object' && 'chart_name' in payload.new) {
+            // Notify user about real-time update
+            toast({
+              title: "Chart Updated",
+              description: `${payload.new.chart_name} chart has been updated in real-time.`,
+            });
+          }
         }
       )
       .subscribe();
