@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { UserRole } from '@/lib/types';
@@ -11,6 +10,7 @@ import ProjectLeadDashboard from '@/components/dashboard/ProjectLeadDashboard';
 import { useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import SimulateUpdatesButton from '@/components/dashboard/SimulateUpdatesButton';
+import DashboardDataOverview from '@/components/dashboard/DashboardDataOverview';
 import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
@@ -20,14 +20,12 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   
-  // Redirect project leads to their specific department page
   useEffect(() => {
     if (user?.role === UserRole.PROJECT_LEAD && user?.department) {
       navigate(`/projects/${user.department.toLowerCase()}`);
     }
   }, [user, navigate]);
   
-  // Extract department from URL if present
   useEffect(() => {
     const pathParts = location.pathname.split('/');
     if (pathParts.length > 2 && pathParts[1] === 'projects') {
@@ -35,33 +33,28 @@ const Dashboard = () => {
       
       if (!user) return;
       
-      // If user is MASTER_ADMIN or ACCOUNTS_TEAM, they can view any department dashboard
       if (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.ACCOUNTS_TEAM) {
         toast({
           title: `Viewing ${department} Dashboard`,
           description: `You are now viewing the ${department} School dashboard`,
         });
       } 
-      // For other roles, check if they have permission to view this department
       else if (user.department !== department) {
         toast({
           title: "Access Restricted",
           description: `You can only view dashboards for your department: ${user.department}`,
           variant: "destructive",
         });
-        // Redirect to main dashboard
         navigate('/dashboard');
       }
     }
   }, [location.pathname, user, toast, navigate]);
   
-  // Set up real-time subscription to dashboard updates
   useEffect(() => {
     if (!user) return;
     
     const channels = [];
     
-    // Subscribe to metrics changes
     const metricsChannel = supabase
       .channel('dashboard-metrics-changes')
       .on(
@@ -75,9 +68,7 @@ const Dashboard = () => {
           console.log('Dashboard metrics changed:', payload);
           setLastUpdate(new Date());
           
-          // Safely access payload properties
           if (payload.new && typeof payload.new === 'object' && 'metric_name' in payload.new) {
-            // Notify user about real-time update
             toast({
               title: "Dashboard Updated",
               description: `${payload.new.metric_name} metric has been updated in real-time.`,
@@ -89,7 +80,6 @@ const Dashboard = () => {
     
     channels.push(metricsChannel);
     
-    // Subscribe to charts changes
     const chartsChannel = supabase
       .channel('dashboard-charts-changes')
       .on(
@@ -103,9 +93,7 @@ const Dashboard = () => {
           console.log('Dashboard charts changed:', payload);
           setLastUpdate(new Date());
           
-          // Safely access payload properties
           if (payload.new && typeof payload.new === 'object' && 'chart_name' in payload.new) {
-            // Notify user about real-time update
             toast({
               title: "Chart Updated",
               description: `${payload.new.chart_name} chart has been updated in real-time.`,
@@ -115,9 +103,6 @@ const Dashboard = () => {
       )
       .subscribe();
     
-    channels.push(chartsChannel);
-    
-    // Subscribe to specific tables based on user role
     if (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.ACCOUNTS_TEAM) {
       const accountsChannel = supabase
         .channel('accounts-data-changes')
@@ -132,7 +117,6 @@ const Dashboard = () => {
             console.log('Accounts data changed:', payload);
             setLastUpdate(new Date());
             
-            // Notify user about real-time update
             toast({
               title: "Accounts Data Updated",
               description: "New accounts data has been recorded in real-time.",
@@ -158,7 +142,6 @@ const Dashboard = () => {
             console.log('Sales data changed:', payload);
             setLastUpdate(new Date());
             
-            // Notify user about real-time update
             toast({
               title: "Sales Data Updated",
               description: "New sales data has been recorded in real-time.",
@@ -170,7 +153,6 @@ const Dashboard = () => {
       channels.push(salesChannel);
     }
     
-    // Cleanup function to remove all channels on unmount
     return () => {
       channels.forEach(channel => {
         supabase.removeChannel(channel);
@@ -204,7 +186,6 @@ const Dashboard = () => {
     return `${user.department} School`;
   };
   
-  // Render the appropriate dashboard based on user role
   const renderDashboard = () => {
     if (!user) return null;
     
@@ -249,6 +230,8 @@ const Dashboard = () => {
         </div>
         <SimulateUpdatesButton />
       </header>
+      
+      <DashboardDataOverview department={user?.department} />
       
       {renderDashboard()}
     </div>
