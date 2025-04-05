@@ -15,7 +15,7 @@ const AccountsSetup = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [setupType, setSetupType] = useState<'quick' | 'custom'>('quick');
+  const [setupType, setSetupType] = useState<'quick' | 'growth' | 'custom'>('quick');
   const [department, setDepartment] = useState<SchoolDepartment | ''>('');
 
   const handleQuickSetup = async () => {
@@ -101,7 +101,7 @@ const AccountsSetup = () => {
           <CardContent>
             <RadioGroup 
               defaultValue={setupType}
-              onValueChange={(value) => setSetupType(value as 'quick' | 'custom')}
+              onValueChange={(value) => setSetupType(value as 'quick' | 'growth' | 'custom')}
               className="flex flex-col gap-4"
             >
               <div className="flex items-start space-x-2">

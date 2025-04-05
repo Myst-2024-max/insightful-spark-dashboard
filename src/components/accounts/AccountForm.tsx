@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -102,9 +103,21 @@ const AccountForm: React.FC<AccountFormProps> = ({ existingAccount, onSave, onCa
 
     setSubmitting(true);
     try {
+      // Ensure all required fields are present and convert types as needed
       const accountData = {
-        ...values,
         user_id: user.id,
+        customer_name: values.customer_name,
+        email: values.email || null,
+        mobile_number: values.mobile_number || null,
+        course_name: values.course_name,
+        amount_paid: values.amount_paid,
+        remaining_amount: values.remaining_amount,
+        total_sale_value: values.total_sale_value,
+        date: values.date,
+        batch_name: values.batch_name || null,
+        mode_of_learning: values.mode_of_learning || null,
+        tenure: values.tenure || null,
+        school_id: values.school_id
       };
 
       if (isEditing) {
