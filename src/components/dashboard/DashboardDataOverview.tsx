@@ -40,14 +40,18 @@ const DashboardDataOverview: React.FC<DashboardDataOverviewProps> = ({ departmen
       // Get available departments
       const { data: departmentsData, error: departmentsError } = await supabase
         .from('dashboard_metrics')
-        .select('department')
-        .not('department', 'is', null)
-        .distinct();
+        .select('department');
       
       if (departmentsError) throw departmentsError;
-      const uniqueDepartments = departmentsData
-        .map(item => item.department)
-        .filter((dept): dept is string => dept !== null);
+      
+      // Extract unique departments
+      const uniqueDepartments = Array.from(
+        new Set(
+          departmentsData
+            .map(item => item.department)
+            .filter((dept): dept is string => dept !== null)
+        )
+      );
       
       setDepartments(uniqueDepartments);
     } catch (error) {

@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Target, Users, DollarSign, TrendingUp, BarChart4, Zap, Calendar } from 'lucide-react';
+import { Target, Users, DollarSign, TrendingUp } from 'lucide-react';
 import CustomCard from '@/components/ui/CustomCard';
 import DataCard from '@/components/dashboard/DataCard';
 import ChartCard from '@/components/dashboard/ChartCard';
@@ -18,9 +19,15 @@ import { DateRange } from "react-day-picker";
 
 interface ProjectLeadDashboardProps {
   department?: string;
+  dateRange?: DateRange;
+  onDateChange?: (range: DateRange) => void;
 }
 
-const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department }) => {
+const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ 
+  department,
+  dateRange,
+  onDateChange
+}) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -31,10 +38,19 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
   const [conversionByChannelData, setConversionByChannelData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeDepartment, setActiveDepartment] = useState<string | undefined>(undefined);
-  const [dateRange, setDateRange] = useState<DateRange>({ 
+  const [localDateRange, setLocalDateRange] = useState<DateRange>({ 
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     to: new Date()  // Today
   });
+
+  const effectiveDateRange = dateRange || localDateRange;
+  
+  const handleLocalDateChange = (range: DateRange) => {
+    setLocalDateRange(range);
+    if (onDateChange) {
+      onDateChange(range);
+    }
+  };
 
   useEffect(() => {
     if (department) {
@@ -61,8 +77,8 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
       try {
         console.log(`Fetching metrics for department: ${activeDepartment}`);
         
-        const fromDate = dateRange.from?.toISOString().split('T')[0];
-        const toDate = dateRange.to?.toISOString().split('T')[0];
+        const fromDate = effectiveDateRange.from?.toISOString().split('T')[0];
+        const toDate = effectiveDateRange.to?.toISOString().split('T')[0];
         
         const { data: metricsData, error: metricsError } = await supabase
           .from('dashboard_metrics')
@@ -216,7 +232,7 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
         supabase.removeChannel(channel);
       };
     }
-  }, [activeDepartment, toast, dateRange]);
+  }, [activeDepartment, toast, effectiveDateRange]);
 
   const onSubmit = async (data: { monthlyTarget: string, paidUserTarget: string, leadCount: string }) => {
     if (!activeDepartment) return;
@@ -252,12 +268,22 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
     }
   };
 
-  const handleDateRangeChange = (range: DateRange) => {
-    setDateRange(range);
-  };
-
   if (isLoading) {
-    return <div className="p-8 text-center">Loading dashboard data...</div>;
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+        <p className="mt-4 text-gray-500">Loading dashboard data...</p>
+      </div>
+    );
   }
 
   return (
@@ -265,8 +291,8 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold">{activeDepartment} School Dashboard</h2>
         <DateFilter 
-          dateRange={dateRange} 
-          onDateChange={handleDateRangeChange}
+          dateRange={effectiveDateRange} 
+          onDateChange={handleLocalDateChange}
         />
       </div>
       
@@ -289,7 +315,9 @@ const ProjectLeadDashboard: React.FC<ProjectLeadDashboardProps> = ({ department 
           </CardHeader>
           <CardContent className="px-0 pb-0">
             {!isFormOpen ? (
-              <Button onClick={() => setIsFormOpen(true)}>Set New Target</Button>
+              <Button onClick={() => setIsFormOpen(true)} className="w-full">
+                Set New Target
+              </Button>
             ) : (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

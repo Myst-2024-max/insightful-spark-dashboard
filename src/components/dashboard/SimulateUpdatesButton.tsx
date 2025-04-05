@@ -6,13 +6,19 @@ import { simulateAllUpdates } from '@/utils/simulateDataUpdates';
 import { UserRole } from '@/lib/types';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const SimulateUpdatesButton = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const handleSimulateUpdates = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error('You must be logged in to simulate updates');
+      navigate('/login');
+      return;
+    }
     
     setIsLoading(true);
     
@@ -34,15 +40,28 @@ const SimulateUpdatesButton = () => {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        toast.success('Updates completed for all departments!');
+        toast.success('Updates completed for all departments!', {
+          description: `${departments.length} departments updated successfully.`,
+          duration: 4000,
+        });
       } else {
         // For other roles, just simulate updates for their department
+        toast.success(`Simulating updates for ${department} department...`, {
+          duration: 1500,
+        });
+        
         await simulateAllUpdates(department);
-        toast.success(`Updates completed for ${department} department!`);
+        
+        toast.success(`Updates completed for ${department} department!`, {
+          description: 'Your dashboard data has been refreshed with new values.',
+          duration: 4000,
+        });
       }
     } catch (error) {
       console.error('Error simulating updates:', error);
-      toast.error('Failed to simulate updates. Please try again.');
+      toast.error('Failed to simulate updates. Please try again.', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +70,7 @@ const SimulateUpdatesButton = () => {
   return (
     <Button 
       variant="default" 
-      className="flex items-center gap-2"
+      className="flex items-center gap-2 bg-primary hover:bg-primary/90"
       onClick={handleSimulateUpdates}
       disabled={isLoading}
     >

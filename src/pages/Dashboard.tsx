@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { UserRole } from '@/lib/types';
@@ -12,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import SimulateUpdatesButton from '@/components/dashboard/SimulateUpdatesButton';
 import DashboardDataOverview from '@/components/dashboard/DashboardDataOverview';
 import { supabase } from '@/integrations/supabase/client';
+import WelcomeBanner from '@/components/dashboard/WelcomeBanner';
+import { DateRange } from 'react-day-picker';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -19,6 +22,24 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [showWelcome, setShowWelcome] = useState<boolean>(true);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date()
+  });
+  
+  useEffect(() => {
+    // Check if welcome banner should be shown (could be stored in localStorage)
+    const welcomeDismissed = localStorage.getItem('welcomeBannerDismissed');
+    if (welcomeDismissed === 'true') {
+      setShowWelcome(false);
+    }
+  }, []);
+
+  const handleDismissWelcome = () => {
+    setShowWelcome(false);
+    localStorage.setItem('welcomeBannerDismissed', 'true');
+  };
   
   useEffect(() => {
     if (user?.role === UserRole.PROJECT_LEAD && user?.department) {
@@ -103,6 +124,8 @@ const Dashboard = () => {
       )
       .subscribe();
     
+    channels.push(chartsChannel);
+    
     if (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.ACCOUNTS_TEAM) {
       const accountsChannel = supabase
         .channel('accounts-data-changes')
@@ -160,6 +183,10 @@ const Dashboard = () => {
     };
   }, [user, toast]);
   
+  const handleDateRangeChange = (newDateRange: DateRange) => {
+    setDateRange(newDateRange);
+  };
+  
   const getDashboardTitle = () => {
     if (!user) return 'Dashboard';
     
@@ -201,7 +228,7 @@ const Dashboard = () => {
       case UserRole.TEAM_LEAD:
         return <TeamLeadDashboard />;
       case UserRole.PROJECT_LEAD:
-        return <ProjectLeadDashboard />;
+        return <ProjectLeadDashboard dateRange={dateRange} onDateChange={handleDateRangeChange} />;
       default:
         return <div>Dashboard not available for your role.</div>;
     }
@@ -213,7 +240,9 @@ const Dashboard = () => {
   
   return (
     <div className="space-y-8 animate-fade-in">
-      <header className="flex justify-between items-center">
+      {showWelcome && <WelcomeBanner onDismiss={handleDismissWelcome} />}
+      
+      <header className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">{getDashboardTitle()}</h1>
           <p className="text-gray-500 mt-2">
@@ -228,7 +257,9 @@ const Dashboard = () => {
             </p>
           )}
         </div>
-        <SimulateUpdatesButton />
+        <div className="flex items-center gap-4">
+          <SimulateUpdatesButton />
+        </div>
       </header>
       
       <DashboardDataOverview department={user?.department} />

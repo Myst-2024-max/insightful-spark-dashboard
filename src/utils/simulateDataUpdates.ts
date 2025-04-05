@@ -69,23 +69,83 @@ export const simulateAllUpdates = async (department: string) => {
       });
     }
     
+    // Also update Target Achievement chart data
+    const { data: targetData, error: targetError } = await supabase
+      .from('dashboard_charts')
+      .select('*')
+      .eq('department', department)
+      .eq('chart_name', 'Target Achievement')
+      .limit(1);
+      
+    if (targetError) throw targetError;
+    
+    if (targetData && targetData.length > 0) {
+      const chart = targetData[0];
+      let achievementData = [];
+      
+      try {
+        achievementData = typeof chart.chart_data === 'string'
+          ? JSON.parse(chart.chart_data)
+          : chart.chart_data || [];
+        
+        // Generate a new achievement percentage (make sure 'Achieved' + 'Remaining' = 100)
+        const newAchieved = Math.floor(Math.random() * 20) + 70; // Random between 70-90%
+        achievementData = [
+          { name: 'Achieved', value: newAchieved },
+          { name: 'Remaining', value: 100 - newAchieved }
+        ];
+        
+        // Save updated chart data
+        const { error: updateError } = await supabase
+          .from('dashboard_charts')
+          .update({ 
+            chart_data: achievementData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', chart.id);
+          
+        if (updateError) throw updateError;
+      } catch (error) {
+        console.error('Error updating target achievement data:', error);
+      }
+    }
+    
     // Now simulate changes to accounts data if appropriate
     if (department === 'CODING' || department === 'DESIGN') {
-      const customerName = `Test Customer ${Math.floor(Math.random() * 1000)}`;
+      const randomNames = [
+        'Priya Sharma', 'Raj Patel', 'Arjun Singh', 'Ananya Gupta', 
+        'Vikram Mehta', 'Neha Shah', 'Karan Malhotra', 'Divya Reddy'
+      ];
+      const randomCourses = {
+        'CODING': ['Web Development', 'Full Stack JS', 'Python Programming', 'Mobile App Development'],
+        'DESIGN': ['UI/UX Design', 'Graphic Design', 'Motion Graphics', 'Design Thinking']
+      };
+      
+      const customerName = randomNames[Math.floor(Math.random() * randomNames.length)];
+      const courseName = department === 'CODING' 
+        ? randomCourses.CODING[Math.floor(Math.random() * randomCourses.CODING.length)]
+        : randomCourses.DESIGN[Math.floor(Math.random() * randomCourses.DESIGN.length)];
+      
+      const totalValue = Math.floor(Math.random() * 50000) + 30000;
+      const paidAmount = Math.floor(totalValue * (Math.random() * 0.6 + 0.2)); // 20-80% of total
+      
       const { error: accountsError } = await supabase
         .from('accounts_data')
-        .upsert([
+        .insert([
           {
             customer_name: customerName,
             date: new Date().toISOString().split('T')[0],
-            amount_paid: Math.floor(Math.random() * 10000) + 5000,
-            total_sale_value: Math.floor(Math.random() * 50000) + 15000,
-            remaining_amount: Math.floor(Math.random() * 10000),
-            course_name: department === 'CODING' ? 'Web Development' : 'UI/UX Design',
+            amount_paid: paidAmount,
+            total_sale_value: totalValue,
+            remaining_amount: totalValue - paidAmount,
+            course_name: courseName,
             school_id: '00000000-0000-0000-0000-000000000000',
             user_id: '00000000-0000-0000-0000-000000000000',
             email: `${customerName.toLowerCase().replace(' ', '.')}@example.com`,
-            mobile_number: `+91${Math.floor(Math.random() * 9000000000) + 1000000000}`
+            mobile_number: `+91${Math.floor(Math.random() * 9000000000) + 1000000000}`,
+            mode_of_learning: ['online', 'offline', 'hybrid'][Math.floor(Math.random() * 3)],
+            tenure: ['3 months', '6 months', '12 months'][Math.floor(Math.random() * 3)],
+            batch_name: `${courseName.slice(0, 3)}-${Math.floor(Math.random() * 100)}`
           }
         ]);
         
