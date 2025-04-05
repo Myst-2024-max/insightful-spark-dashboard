@@ -1,72 +1,66 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { simulateAllUpdates } from '@/utils/simulateDataUpdates';
-import { useAuth } from '@/components/auth/AuthContext';
-import { UserRole } from '@/lib/types';
-import { RefreshCw } from 'lucide-react';
 
 const SimulateUpdatesButton = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isSimulating, setIsSimulating] = useState(false);
 
-  // Only Master Admin and Accounts Team can simulate updates for any department
-  const canSimulateAll = user?.role === UserRole.MASTER_ADMIN || user?.role === UserRole.ACCOUNTS_TEAM;
-
-  const handleSimulate = async () => {
+  const handleSimulateUpdates = async () => {
     if (!user?.department) {
       toast({
         title: "Error",
-        description: "User department information is missing.",
+        description: "No department found to simulate updates for.",
         variant: "destructive",
       });
       return;
     }
 
-    setIsSimulating(true);
+    setIsLoading(true);
+    
     try {
-      if (canSimulateAll) {
-        // For Master Admin, simulate updates for all departments
-        const departments = ['CODING', 'DESIGN', 'MARKETING', 'FINANCE'];
-        for (const dept of departments) {
-          await simulateAllUpdates(dept);
-        }
+      // Notify the user that the simulation is starting
+      toast({
+        title: "Simulating Updates",
+        description: `Starting to simulate updates for ${user.department} department.`,
+      });
+      
+      const result = await simulateAllUpdates(user.department);
+      
+      if (result.success) {
         toast({
-          title: "Data Updated",
-          description: "Simulated real-time updates for all departments.",
+          title: "Updates Simulated",
+          description: `Data updates for ${user.department} have been simulated successfully.`,
         });
       } else {
-        // For other roles, only simulate updates for their department
-        await simulateAllUpdates(user.department);
-        toast({
-          title: "Data Updated",
-          description: `Simulated real-time updates for ${user.department} department.`,
-        });
+        throw new Error("Failed to simulate updates");
       }
     } catch (error) {
-      console.error('Error simulating updates:', error);
+      console.error("Error simulating updates:", error);
       toast({
-        title: "Error",
-        description: "Failed to simulate updates. Please try again.",
+        title: "Update Simulation Failed",
+        description: "An error occurred while trying to simulate updates.",
         variant: "destructive",
       });
     } finally {
-      setIsSimulating(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <Button 
-      variant="outline" 
-      size="sm" 
-      onClick={handleSimulate} 
-      disabled={isSimulating}
-      className="flex items-center gap-2"
+      onClick={handleSimulateUpdates} 
+      disabled={isLoading}
+      variant="outline"
+      className="flex gap-2 items-center"
     >
-      <RefreshCw className={`h-4 w-4 ${isSimulating ? 'animate-spin' : ''}`} />
-      Simulate Updates
+      <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+      {isLoading ? 'Simulating...' : 'Simulate Updates'}
     </Button>
   );
 };

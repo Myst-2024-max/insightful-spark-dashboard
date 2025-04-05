@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { UserRole } from '@/lib/types';
 import MasterAdminDashboard from '@/components/dashboard/MasterAdminDashboard';
@@ -11,12 +11,14 @@ import ProjectLeadDashboard from '@/components/dashboard/ProjectLeadDashboard';
 import { useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import SimulateUpdatesButton from '@/components/dashboard/SimulateUpdatesButton';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   
   // Redirect project leads to their specific department page
   useEffect(() => {
@@ -52,6 +54,123 @@ const Dashboard = () => {
       }
     }
   }, [location.pathname, user, toast, navigate]);
+  
+  // Set up real-time subscription to dashboard updates
+  useEffect(() => {
+    if (!user) return;
+    
+    const channels = [];
+    
+    // Subscribe to metrics changes
+    const metricsChannel = supabase
+      .channel('dashboard-metrics-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_metrics'
+        },
+        (payload) => {
+          console.log('Dashboard metrics changed:', payload);
+          setLastUpdate(new Date());
+          
+          // Notify user about real-time update
+          toast({
+            title: "Dashboard Updated",
+            description: `${payload.new.metric_name} metric has been updated in real-time.`,
+          });
+        }
+      )
+      .subscribe();
+    
+    channels.push(metricsChannel);
+    
+    // Subscribe to charts changes
+    const chartsChannel = supabase
+      .channel('dashboard-charts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_charts'
+        },
+        (payload) => {
+          console.log('Dashboard charts changed:', payload);
+          setLastUpdate(new Date());
+          
+          // Notify user about real-time update
+          toast({
+            title: "Chart Updated",
+            description: `${payload.new.chart_name} chart has been updated in real-time.`,
+          });
+        }
+      )
+      .subscribe();
+    
+    channels.push(chartsChannel);
+    
+    // Subscribe to specific tables based on user role
+    if (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.ACCOUNTS_TEAM) {
+      const accountsChannel = supabase
+        .channel('accounts-data-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'accounts_data'
+          },
+          (payload) => {
+            console.log('Accounts data changed:', payload);
+            setLastUpdate(new Date());
+            
+            // Notify user about real-time update
+            toast({
+              title: "Accounts Data Updated",
+              description: "New accounts data has been recorded in real-time.",
+            });
+          }
+        )
+        .subscribe();
+      
+      channels.push(accountsChannel);
+    }
+    
+    if (user.role === UserRole.TEAM_LEAD || user.role === UserRole.MASTER_ADMIN) {
+      const salesChannel = supabase
+        .channel('sales-data-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'sales_data'
+          },
+          (payload) => {
+            console.log('Sales data changed:', payload);
+            setLastUpdate(new Date());
+            
+            // Notify user about real-time update
+            toast({
+              title: "Sales Data Updated",
+              description: "New sales data has been recorded in real-time.",
+            });
+          }
+        )
+        .subscribe();
+      
+      channels.push(salesChannel);
+    }
+    
+    // Cleanup function to remove all channels on unmount
+    return () => {
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
+    };
+  }, [user, toast]);
   
   const getDashboardTitle = () => {
     if (!user) return 'Dashboard';
@@ -116,6 +235,11 @@ const Dashboard = () => {
               <span className="font-medium text-primary"> {getDepartmentName()}</span>
             )}
           </p>
+          {lastUpdate && (
+            <p className="text-xs text-gray-400 mt-1">
+              Last updated: {lastUpdate.toLocaleTimeString()}
+            </p>
+          )}
         </div>
         <SimulateUpdatesButton />
       </header>
