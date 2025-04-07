@@ -78,6 +78,77 @@ export type Database = {
           },
         ]
       }
+      analytics_data: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          icon: string | null
+          id: string
+          percent_change: number | null
+          title: string
+          trend: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          icon?: string | null
+          id?: string
+          percent_change?: number | null
+          title: string
+          trend?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          icon?: string | null
+          id?: string
+          percent_change?: number | null
+          title?: string
+          trend?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      chart_data: {
+        Row: {
+          category: string | null
+          chart_id: string
+          created_at: string | null
+          date: string | null
+          id: string
+          name: string
+          value: number
+        }
+        Insert: {
+          category?: string | null
+          chart_id: string
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          name: string
+          value: number
+        }
+        Update: {
+          category?: string | null
+          chart_id?: string
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          name?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chart_data_chart_id_fkey"
+            columns: ["chart_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_charts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_charts: {
         Row: {
           chart_data: Json
@@ -314,26 +385,73 @@ export type Database = {
           },
         ]
       }
+      program_school: {
+        Row: {
+          created_at: string | null
+          id: string
+          program_id: string
+          school_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          program_id: string
+          school_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          program_id?: string
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_school_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_school_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programs: {
         Row: {
           created_at: string | null
           description: string | null
           id: string
           name: string
+          school_id: string | null
         }
         Insert: {
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
+          school_id?: string | null
         }
         Update: {
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
+          school_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "programs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_lead_data: {
         Row: {
@@ -465,6 +583,53 @@ export type Database = {
           },
         ]
       }
+      sales_executive_performance: {
+        Row: {
+          achieved_value: number
+          achievement_percentage: number | null
+          avatar: string | null
+          created_at: string | null
+          id: string
+          name: string
+          target_value: number
+          trend: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achieved_value?: number
+          achievement_percentage?: number | null
+          avatar?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          target_value?: number
+          trend?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achieved_value?: number
+          achievement_percentage?: number | null
+          avatar?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          target_value?: number
+          trend?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_executive_performance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "haca_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           created_at: string | null
@@ -558,6 +723,35 @@ export type Database = {
           },
         ]
       }
+      teams: {
+        Row: {
+          created_at: string | null
+          id: string
+          lead_id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lead_id: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "haca_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -584,7 +778,14 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      school_department: "CODING" | "DESIGN" | "MARKETING" | "FINANCE"
+      user_role:
+        | "MASTER_ADMIN"
+        | "SALES_EXECUTIVE"
+        | "ACCOUNTS_TEAM"
+        | "GROWTH_TEAM"
+        | "TEAM_LEAD"
+        | "PROJECT_LEAD"
     }
     CompositeTypes: {
       [_ in never]: never

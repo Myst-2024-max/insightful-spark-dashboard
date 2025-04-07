@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Loader2 } from 'lucide-react';
+import { RefreshCw, Loader2, Sparkles } from 'lucide-react';
 import { simulateAllUpdates } from '@/utils/simulateDataUpdates';
 import { UserRole } from '@/lib/types';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 
 const SimulateUpdatesButton = () => {
   const [isLoading, setIsLoading] = React.useState(false);
@@ -31,7 +32,7 @@ const SimulateUpdatesButton = () => {
       // Master admin can simulate updates for all departments
       if (user.role === UserRole.MASTER_ADMIN) {
         // Simulate for multiple departments
-        const departments = ['CODING', 'DESIGN', 'MARKETING'];
+        const departments = ['CODING', 'DESIGN', 'MARKETING', 'FINANCE'];
         
         toast.success('Simulating updates for all departments...', {
           duration: 2000,
@@ -77,24 +78,29 @@ const SimulateUpdatesButton = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="relative">
-            <Button 
-              variant="default" 
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all duration-300 shadow-md hover:shadow-lg relative overflow-hidden scale-on-hover"
-              onClick={handleSimulateUpdates}
-              disabled={isLoading}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className={`h-4 w-4`} />
-              )}
-              {isLoading ? 'Updating...' : 'Simulate Updates'}
-              
-              {/* Add a pulsing effect when updates are available */}
-              {!isLoading && lastUpdate && (
-                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-              )}
-            </Button>
+              <Button 
+                variant="default" 
+                className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-all duration-300 shadow-md hover:shadow-lg relative overflow-hidden"
+                onClick={handleSimulateUpdates}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {isLoading ? 'Updating...' : 'Simulate Updates'}
+                
+                {/* Add a pulsing effect when updates are available */}
+                {!isLoading && lastUpdate && (
+                  <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                )}
+              </Button>
+            </motion.div>
             
             {/* Show last update time */}
             {lastUpdate && (
